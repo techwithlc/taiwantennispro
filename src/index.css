@@ -7,17 +7,34 @@
   height: 100%;
   width: 100%;
   border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(45,106,79,0.1);
 }
 .leaflet-control-zoom { display: none; }
 .leaflet-popup-content-wrapper {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12) !important;
   padding: 0 !important;
+  border-top: 3px solid #c8e639 !important;
 }
 .leaflet-popup-content { margin: 12px 14px !important; }
 .leaflet-popup-tip-container { display: none; }
 
-/* ── Desktop (≥ 640px): sidebar visible, mobile elements hidden ── */
+/* ── Selected marker bounce ── */
+@keyframes marker-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.marker-selected {
+  animation: marker-bounce 0.5s ease;
+}
+
+/* ── Custom scrollbar for court list ── */
+.court-scroll::-webkit-scrollbar { width: 5px; }
+.court-scroll::-webkit-scrollbar-track { background: #f0f7ed; }
+.court-scroll::-webkit-scrollbar-thumb { background: #a7c4a0; border-radius: 99px; }
+.court-scroll::-webkit-scrollbar-thumb:hover { background: #7ba878; }
+
+/* ── Desktop (>= 640px): sidebar visible, mobile elements hidden ── */
 .desktop-sidebar  { display: flex; }
 .mobile-fab       { display: none; }
 .mobile-backdrop  { display: none; }
@@ -27,18 +44,25 @@
 @media (max-width: 639px) {
   .desktop-sidebar { display: none; }
   .legend-row      { display: none !important; }
-  .leaflet-container { border-radius: 0; }
+  .leaflet-container { border-radius: 0; box-shadow: none; }
   .map-wrapper { padding: 0 !important; }
 
-  /* FAB always visible on mobile */
   .mobile-fab {
     display: flex;
   }
 
-  /* Backdrop: hidden by default, shown when .is-open */
   .mobile-backdrop         { display: none; }
   .mobile-backdrop.is-open { display: block; }
 
-  /* Sheet: always in DOM for animation, flex layout */
   .mobile-sheet { display: flex; }
+
+  /* Sheet accent strip */
+  .mobile-sheet::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #c8e639, #2d6a4f);
+    border-radius: 20px 20px 0 0;
+  }
 }

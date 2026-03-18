@@ -46,11 +46,21 @@ function makeIcon(status: CourtStatus, selected: boolean): L.DivIcon {
   const html = tennisBallHtml(STATUS_COLOR[status], STATUS_GLOW[status], size, selected)
   return L.divIcon({
     html,
-    className: '',
+    className: selected ? 'marker-selected' : '',
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -size / 2 - 6],
   })
+}
+
+function popupStatusLabel(court: Court): string {
+  if (court.walkUpOnly && court.status !== 'taken') return '現場排隊'
+  return STATUS_LABEL[court.status]
+}
+
+function popupStatusColor(court: Court): string {
+  if (court.walkUpOnly && court.status !== 'taken') return '#64748b'
+  return STATUS_COLOR[court.status]
 }
 
 interface Props {
@@ -68,7 +78,6 @@ export default function CourtMap({ courts, onSelect, selected }: Props) {
       style={{ borderRadius: '16px' }}
       zoomControl={false}
     >
-      {/* CartoDB Positron — clean minimal tiles */}
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>'
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
@@ -84,28 +93,28 @@ export default function CourtMap({ courts, onSelect, selected }: Props) {
           zIndexOffset={selected?.id === court.id ? 1000 : 0}
         >
           <Popup closeButton={false} className="tennis-popup">
-            <div style={{ minWidth: 180, padding: '2px 0' }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1a1a', marginBottom: 4 }}>
+            <div style={{ minWidth: 190, padding: '2px 0' }}>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#1a4731', marginBottom: 4 }}>
                 🎾 {court.name}
               </div>
-              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: '#6b9080', marginBottom: 8 }}>
                 {court.district} · {SOURCE_LABEL[court.source]}
               </div>
               <div style={{
                 display: 'inline-block',
-                padding: '2px 10px',
+                padding: '3px 12px',
                 borderRadius: 99,
                 fontSize: 11,
-                fontWeight: 600,
-                background: STATUS_COLOR[court.status] + '22',
-                color: STATUS_COLOR[court.status],
-                border: `1px solid ${STATUS_COLOR[court.status]}44`,
+                fontWeight: 700,
+                background: popupStatusColor(court) + '18',
+                color: popupStatusColor(court),
+                border: `1.5px solid ${popupStatusColor(court)}33`,
               }}>
-                {STATUS_LABEL[court.status]}
+                {popupStatusLabel(court)}
               </div>
               {court.walkUpOnly && (
-                <div style={{ fontSize: 11, color: '#d97706', marginTop: 6 }}>
-                  ⚠️ 現場排隊
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                  🚶 現場排隊制
                 </div>
               )}
             </div>

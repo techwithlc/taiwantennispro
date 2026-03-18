@@ -5,11 +5,11 @@ const LOAD_SCHED_URL = 'https://vbs.sports.taipei/_/x/xhrworkv3.php'
 
 // All tennis court VSNs found via API scan
 const TENNIS_VSNS = [
-  117, 174, 201, 210, 239, 253, 266, 267,
+  174, 201, 210, 239, 253, 267,
   305, 312, 320, 324, 341, 342, 343, 352, 425, 489,
 ]
 
-const PLAY_HOURS = Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
+const PLAY_HOURS = Array.from({ length: 17 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
 function todayTaipei() {
   const now = new Date()
