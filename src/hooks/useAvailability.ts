@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Court, CourtStatus, TimeSlot } from '../types/court'
 
 interface ApiResponse {
@@ -13,18 +13,27 @@ interface ApiResponse {
 export function useAvailability(courts: Court[]) {
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [lastFetch, setLastFetch] = useState<Date | null>(null)
+  const isInFlight = useRef(false)
 
   const fetch_ = useCallback(async () => {
+    if (isInFlight.current) return
+    isInFlight.current = true
+    setLoading(true)
+    setError(null)
     try {
       const res = await fetch('/api/availability')
+      if (!res.ok) throw new Error(`伺服器錯誤 ${res.status}`)
       const json: ApiResponse = await res.json()
+      if (!json.ok) throw new Error('API 回傳失敗')
       setData(json)
       setLastFetch(new Date())
-    } catch {
-      // silently keep previous data
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '無法取得資料，請稍後再試')
     } finally {
       setLoading(false)
+      isInFlight.current = false
     }
   }, [])
 
@@ -51,5 +60,5 @@ export function useAvailability(courts: Court[]) {
     }
   })
 
-  return { courts: enriched, loading, lastFetch, refresh: fetch_ }
+  return { courts: enriched, loading, error, lastFetch, refresh: fetch_ }
 }

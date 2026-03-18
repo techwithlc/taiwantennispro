@@ -13,17 +13,21 @@ const PLAY_HOURS = Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStar
 
 function todayTaipei() {
   const now = new Date()
-  const taipei = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }))
-  return {
-    year: taipei.getFullYear(),
-    month: taipei.getMonth() + 1,
-    day: taipei.getDate(),
-    dateStr: taipei.toISOString().slice(0, 10),
-  }
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  })
+  const parts = fmt.formatToParts(now)
+  const year  = Number(parts.find(p => p.type === 'year')!.value)
+  const month = Number(parts.find(p => p.type === 'month')!.value)
+  const day   = Number(parts.find(p => p.type === 'day')!.value)
+  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  return { year, month, day, dateStr }
 }
 
 async function getSession(): Promise<string> {
   const res = await fetch(VBS_VENUE_URL, {
+    signal: AbortSignal.timeout(8000),
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       'Accept': 'text/html,application/xhtml+xml',
@@ -49,6 +53,7 @@ async function loadSched(vsn: number, sessionId: string, dateInfo: ReturnType<ty
 
   const res = await fetch(LOAD_SCHED_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(8000),
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       'Referer': VBS_VENUE_URL,

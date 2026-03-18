@@ -24,8 +24,6 @@ interface Props {
 
 export default function CourtSidebar({ courts, selected, onSelect, filterDistrict, onFilterChange }: Props) {
   const districts = ['全部', ...Array.from(new Set(courts.map((c) => c.district)))]
-  const allCourts = courts  // full list for district options
-  void allCourts
 
   return (
     <aside className="flex flex-col h-full bg-white">
@@ -100,7 +98,7 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
                   <div className="flex gap-0.5 mt-2 flex-wrap">
                     {court.slots.filter(s => {
                       const h = parseInt(s.time)
-                      return h >= 6 && h <= 21
+                      return h >= 6 && h <= 22
                     }).map((slot) => (
                       <div
                         key={slot.time}
