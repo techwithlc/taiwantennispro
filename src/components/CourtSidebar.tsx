@@ -1,6 +1,17 @@
 import type { Court, CourtStatus } from '../types/court'
 import { STATUS_LABEL, SOURCE_LABEL } from '../data/courts'
 
+const APPROVED_DOMAINS = ['vbs.sports.taipei', 'tsc.taipei', 'www.tsc.taipei', 'www.taipeitenniscourt.com']
+
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && APPROVED_DOMAINS.some(d => parsed.hostname === d || parsed.hostname.endsWith('.' + d))
+  } catch {
+    return false
+  }
+}
+
 const STATUS_COLOR: Record<CourtStatus, string> = {
   available: '#16a34a',
   taken:     '#dc2626',
@@ -233,21 +244,23 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
             {/* Walk-up notice or booking button */}
             {selected.walkUpOnly ? (
               <>
-                <a
-                  href={selected.bookingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-sm font-semibold
-                             transition-all hover:opacity-90 active:scale-95"
-                  style={{ background: '#64748b', color: 'white' }}
-                >
-                  查看場地資訊 →
-                </a>
+                {isSafeUrl(selected.bookingUrl) && (
+                  <a
+                    href={selected.bookingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-sm font-semibold
+                               transition-all hover:opacity-90 active:scale-95"
+                    style={{ background: '#64748b', color: 'white' }}
+                  >
+                    查看場地資訊 →
+                  </a>
+                )}
                 <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, textAlign: 'center' }}>
                   🚶 此場地為現場排隊制，無法線上預約
                 </p>
               </>
-            ) : (
+            ) : isSafeUrl(selected.bookingUrl) ? (
               <a
                 href={selected.bookingUrl}
                 target="_blank"
@@ -262,7 +275,7 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
               >
                 🎾 前往預約 →
               </a>
-            )}
+            ) : null}
 
             {selected.lastUpdated && (
               <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, textAlign: 'center' }}>

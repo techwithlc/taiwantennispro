@@ -119,13 +119,14 @@ export default async function handler(_req: Request, _ctx: Context) {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'public, max-age=300',
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': 'https://taiwantennispro.netlify.app',
         },
       }
     )
   } catch (err) {
+    console.error('availability API error:', err)
     return new Response(
-      JSON.stringify({ ok: false, error: String(err) }),
+      JSON.stringify({ ok: false, error: '伺服器暫時無法取得場地資料，請稍後再試' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
