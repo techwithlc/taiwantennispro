@@ -2,38 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Leaflet */
+/* ── Leaflet ── */
 .leaflet-container {
   height: 100%;
   width: 100%;
   border-radius: 12px;
 }
 .leaflet-control-zoom { display: none; }
-
-/* Desktop: sidebar visible, sheet hidden */
-@media (min-width: 640px) {
-  .desktop-sidebar { display: flex !important; }
-  .mobile-sheet    { display: none !important; }
-  .mobile-list-btn { display: none !important; }
-}
-
-/* Mobile: sidebar hidden, FAB + sheet visible */
-@media (max-width: 639px) {
-  .desktop-sidebar  { display: none !important; }
-  .mobile-sheet     { display: flex !important; }
-  .mobile-fab       { display: flex !important; }
-  .mobile-backdrop  { display: block !important; }
-  .legend-row       { display: none !important; }
-  .leaflet-container { border-radius: 0; }
-}
-
-/* Leaflet popup overrides */
 .leaflet-popup-content-wrapper {
   border-radius: 12px !important;
   box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important;
   padding: 0 !important;
 }
-.leaflet-popup-content {
-  margin: 12px 14px !important;
-}
+.leaflet-popup-content { margin: 12px 14px !important; }
 .leaflet-popup-tip-container { display: none; }
+
+/* ── Desktop (≥ 640px): sidebar visible, mobile elements hidden ── */
+.desktop-sidebar  { display: flex; }
+.mobile-fab       { display: none; }
+.mobile-backdrop  { display: none; }
+.mobile-sheet     { display: none; }
+
+/* ── Mobile (< 640px) ── */
+@media (max-width: 639px) {
+  .desktop-sidebar { display: none; }
+  .legend-row      { display: none !important; }
+  .leaflet-container { border-radius: 0; }
+  .map-wrapper { padding: 0 !important; }
+
+  /* FAB always visible on mobile */
+  .mobile-fab {
+    display: flex;
+  }
+
+  /* Backdrop: hidden by default, shown when .is-open */
+  .mobile-backdrop         { display: none; }
+  .mobile-backdrop.is-open { display: block; }
+
+  /* Sheet: always in DOM for animation, flex layout */
+  .mobile-sheet { display: flex; }
+}

@@ -102,7 +102,8 @@ export default function App() {
         <div className="desktop-sidebar" style={{
           width: 300, minWidth: 300, flexShrink: 0,
           flexDirection: 'column',
-          boxShadow: '2px 0 12px rgba(0,0,0,0.06)', zIndex: 10,
+          boxShadow: '2px 0 12px rgba(0,0,0,0.06)',
+          position: 'relative', zIndex: 10,
         }}>
           <CourtSidebar
             courts={filtered}
@@ -113,8 +114,8 @@ export default function App() {
           />
         </div>
 
-        {/* Map */}
-        <div style={{ flex: 1, padding: 12, minWidth: 0, minHeight: 0 }}>
+        {/* Map — position+zIndex create a stacking context so Leaflet panes stay contained */}
+        <div className="map-wrapper" style={{ flex: 1, padding: 12, minWidth: 0, minHeight: 0, position: 'relative', zIndex: 0 }}>
           <CourtMap courts={filtered} selected={selected} onSelect={(c) => { setSelected(c); setSheetOpen(true) }} />
         </div>
 
