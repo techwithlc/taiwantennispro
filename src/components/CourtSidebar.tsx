@@ -28,16 +28,19 @@ function MiniTennisBall({ color, size = 10 }: { color: string; size?: number }) 
 }
 
 function statusLabel(court: Court): string {
+  if (!court.vsn) return '無即時資料'
   if (court.walkUpOnly && court.status !== 'taken') return '現場排隊'
   return STATUS_LABEL[court.status]
 }
 
 function statusColor(court: Court): string {
+  if (!court.vsn) return '#94a3b8'
   if (court.walkUpOnly && court.status !== 'taken') return '#6b7280'
   return STATUS_COLOR[court.status]
 }
 
 function statusBg(court: Court): string {
+  if (!court.vsn) return '#f1f5f9'
   if (court.walkUpOnly && court.status !== 'taken') return '#f1f5f9'
   return STATUS_BG[court.status]
 }
@@ -129,6 +132,11 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
                         🚶 現場排隊制
                       </p>
                     )}
+                    {!court.vsn && (
+                      <p style={{ fontSize: 10, marginTop: 3, color: '#94a3b8' }}>
+                        📡 未接入即時系統
+                      </p>
+                    )}
                   </div>
                   <span style={{
                     flexShrink: 0, fontSize: 11, padding: '2px 10px',
@@ -204,6 +212,21 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* No VBS data notice */}
+            {!selected.vsn && (
+              <div style={{
+                background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 10,
+                padding: '10px 12px', marginBottom: 10, textAlign: 'center',
+              }}>
+                <p style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 2 }}>
+                  📡 此場地未接入即時系統
+                </p>
+                <p style={{ fontSize: 10, color: '#94a3b8' }}>
+                  請至官方網站或 App 查詢場地狀態
+                </p>
               </div>
             )}
 

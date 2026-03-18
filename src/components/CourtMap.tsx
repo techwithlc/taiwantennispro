@@ -54,11 +54,13 @@ function makeIcon(status: CourtStatus, selected: boolean): L.DivIcon {
 }
 
 function popupStatusLabel(court: Court): string {
+  if (!court.vsn) return '無即時資料'
   if (court.walkUpOnly && court.status !== 'taken') return '現場排隊'
   return STATUS_LABEL[court.status]
 }
 
 function popupStatusColor(court: Court): string {
+  if (!court.vsn) return '#94a3b8'
   if (court.walkUpOnly && court.status !== 'taken') return '#64748b'
   return STATUS_COLOR[court.status]
 }
@@ -115,6 +117,11 @@ export default function CourtMap({ courts, onSelect, selected }: Props) {
               {court.walkUpOnly && (
                 <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
                   🚶 現場排隊制
+                </div>
+              )}
+              {!court.vsn && (
+                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6 }}>
+                  📡 未接入即時系統
                 </div>
               )}
             </div>
