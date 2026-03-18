@@ -17,14 +17,13 @@
   .mobile-list-btn { display: none !important; }
 }
 
-/* Mobile: sidebar hidden, sheet + toggle visible */
+/* Mobile: sidebar hidden, FAB + sheet visible */
 @media (max-width: 639px) {
-  .desktop-sidebar { display: none !important; }
-  .mobile-sheet    { display: flex !important; }
-  .mobile-list-btn { display: block !important; }
-  .legend-row      { display: none !important; }
-
-  /* Map padding smaller on mobile */
+  .desktop-sidebar  { display: none !important; }
+  .mobile-sheet     { display: flex !important; }
+  .mobile-fab       { display: flex !important; }
+  .mobile-backdrop  { display: block !important; }
+  .legend-row       { display: none !important; }
   .leaflet-container { border-radius: 0; }
 }
 

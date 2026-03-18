@@ -46,7 +46,7 @@ export default function App() {
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f8fafc' }}>
 
-      {/* ── Top bar (always visible) ── */}
+      {/* ── Top bar ── */}
       <div style={{
         height: 52, flexShrink: 0,
         background: 'white', borderBottom: '1px solid #e5e7eb',
@@ -58,7 +58,6 @@ export default function App() {
           台灣網球場地圖
         </span>
 
-        {/* Legend — hide on very small screens */}
         <div className="legend-row" style={{ display: 'flex', gap: 10, alignItems: 'center', marginLeft: 8 }}>
           {([
             ['available', '有空位'],
@@ -83,29 +82,14 @@ export default function App() {
             padding: '4px 10px', borderRadius: 20, border: 'none',
             fontSize: 11, fontWeight: 600, cursor: loading ? 'wait' : 'pointer',
             background: loading ? '#e5e7eb' : '#16a34a',
-            color: loading ? '#9ca3af' : 'white', whiteSpace: 'nowrap',
+            color: loading ? '#9ca3af' : 'white',
           }}>
             {loading ? '…' : '↺'}
-          </button>
-
-          {/* Mobile: list toggle button */}
-          <button
-            className="mobile-list-btn"
-            onClick={() => setSheetOpen(v => !v)}
-            style={{
-              padding: '4px 10px', borderRadius: 20, border: '1px solid #e5e7eb',
-              fontSize: 11, fontWeight: 600, cursor: 'pointer',
-              background: sheetOpen ? '#166534' : 'white',
-              color: sheetOpen ? 'white' : '#166534',
-              display: 'none',  // shown via CSS media query
-            }}
-          >
-            {sheetOpen ? '✕ 關閉' : '☰ 球場'}
           </button>
         </div>
       </div>
 
-      {/* ── Main content ── */}
+      {/* ── Main ── */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
 
         {/* Desktop sidebar */}
@@ -123,47 +107,92 @@ export default function App() {
           />
         </div>
 
-        {/* Map — always fills remaining space */}
+        {/* Map */}
         <div style={{ flex: 1, padding: 12, minWidth: 0, minHeight: 0 }}>
           <CourtMap courts={filtered} selected={selected} onSelect={handleSelectCourt} />
         </div>
 
-        {/* Mobile bottom sheet */}
+        {/* ── Mobile only ── */}
+
+        {/* FAB: 球場列表按鈕，浮在地圖右下角 */}
+        <button
+          className="mobile-fab"
+          onClick={() => setSheetOpen(true)}
+          style={{
+            position: 'absolute', bottom: 20, right: 16,
+            zIndex: 25, display: 'none',
+            background: '#166534', color: 'white',
+            border: 'none', borderRadius: 28,
+            padding: '10px 18px',
+            fontSize: 13, fontWeight: 700,
+            boxShadow: '0 4px 16px rgba(22,101,52,0.45)',
+            cursor: 'pointer',
+          }}
+        >
+          🎾 {filtered.length} 個球場
+        </button>
+
+        {/* Backdrop */}
+        {sheetOpen && (
+          <div
+            className="mobile-backdrop"
+            onClick={() => setSheetOpen(false)}
+            style={{
+              position: 'absolute', inset: 0, zIndex: 28,
+              background: 'rgba(0,0,0,0.35)',
+              display: 'none',
+            }}
+          />
+        )}
+
+        {/* Bottom sheet — slides up fully, no peek */}
         <div
           className="mobile-sheet"
           style={{
             position: 'absolute', bottom: 0, left: 0, right: 0,
             background: 'white',
             borderRadius: '20px 20px 0 0',
-            boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
-            transform: sheetOpen ? 'translateY(0)' : 'translateY(calc(100% - 56px))',
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
+            transform: sheetOpen ? 'translateY(0)' : 'translateY(100%)',
             transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
             zIndex: 30,
-            maxHeight: '75dvh',
-            display: 'flex', flexDirection: 'column',
-            // hidden on desktop
+            height: '78dvh',
+            display: 'none',
+            flexDirection: 'column',
           }}
         >
-          {/* Drag handle / peek row */}
-          <div
-            onClick={() => setSheetOpen(v => !v)}
-            style={{
-              height: 56, flexShrink: 0, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', cursor: 'pointer', gap: 8, padding: '0 16px',
-            }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#d1d5db' }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', position: 'absolute' }}>
-              {sheetOpen ? '' : `🎾 ${filtered.length} 個球場`}
-            </span>
+          {/* Sheet header */}
+          <div style={{
+            height: 52, flexShrink: 0,
+            display: 'flex', alignItems: 'center',
+            padding: '0 16px', borderBottom: '1px solid #f3f4f6',
+            justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#d1d5db' }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
+                球場列表
+              </span>
+            </div>
+            <button
+              onClick={() => setSheetOpen(false)}
+              style={{
+                width: 28, height: 28, borderRadius: 14,
+                border: 'none', background: '#f3f4f6',
+                fontSize: 14, cursor: 'pointer', color: '#6b7280',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              ✕
+            </button>
           </div>
 
-          {/* Sheet content — same sidebar */}
+          {/* Sheet body */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <CourtSidebar
               courts={filtered}
               selected={selected}
-              onSelect={(c) => { setSelected(c); setSheetOpen(true) }}
+              onSelect={(c) => { setSelected(c); }}
               filterDistrict={filterDistrict}
               onFilterChange={setFilterDistrict}
             />
