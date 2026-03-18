@@ -29,6 +29,7 @@ function TennisBall({ color, size = 12 }: { color: string; size?: number }) {
 export default function App() {
   const [selected, setSelected] = useState<Court | null>(null)
   const [filterDistrict, setFilterDistrict] = useState('全部')
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const { courts: liveCourts, loading, lastFetch, refresh } = useAvailability(COURTS)
 
@@ -37,80 +38,136 @@ export default function App() {
     [filterDistrict, liveCourts]
   )
 
+  const handleSelectCourt = (court: Court) => {
+    setSelected(court)
+    setSheetOpen(true)
+  }
+
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: '#f8fafc' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f8fafc' }}>
 
-      {/* Left sidebar — fixed width */}
-      <div style={{ width: 300, minWidth: 300, display: 'flex', flexDirection: 'column',
-                    boxShadow: '2px 0 12px rgba(0,0,0,0.06)', zIndex: 10 }}>
-        <CourtSidebar
-          courts={filtered}
-          selected={selected}
-          onSelect={setSelected}
-          filterDistrict={filterDistrict}
-          onFilterChange={setFilterDistrict}
-        />
-      </div>
+      {/* ── Top bar (always visible) ── */}
+      <div style={{
+        height: 52, flexShrink: 0,
+        background: 'white', borderBottom: '1px solid #e5e7eb',
+        display: 'flex', alignItems: 'center',
+        padding: '0 12px', gap: 10, zIndex: 20,
+      }}>
+        <span style={{ fontSize: 20 }}>🎾</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#166534', whiteSpace: 'nowrap' }}>
+          台灣網球場地圖
+        </span>
 
-      {/* Right: map + top bar */}
-      <div className="flex-1 flex flex-col min-w-0">
-
-        {/* Top bar */}
-        <div style={{
-          height: 52,
-          background: 'white',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 16px',
-          gap: 16,
-          zIndex: 5,
-        }}>
-          {/* Legend */}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            {([
-              ['available', '有空位'],
-              ['partial',   '部分開放'],
-              ['taken',     '已約滿'],
-              ['unknown',   '查詢中'],
-            ] as [CourtStatus, string][]).map(([status, label]) => (
-              <span key={status} style={{ display: 'flex', alignItems: 'center', gap: 5,
-                                          fontSize: 12, color: '#4b5563', fontWeight: 500 }}>
-                <TennisBall color={STATUS_COLOR[status]} size={13} />
-                {label}
-              </span>
-            ))}
-          </div>
-
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-            {lastFetch && (
-              <span style={{ fontSize: 11, color: '#9ca3af' }}>
-                更新 {lastFetch.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-            <button
-              onClick={refresh}
-              disabled={loading}
-              style={{
-                padding: '4px 12px',
-                borderRadius: 20,
-                border: 'none',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: loading ? 'wait' : 'pointer',
-                background: loading ? '#e5e7eb' : '#16a34a',
-                color: loading ? '#9ca3af' : 'white',
-                transition: 'all 0.15s',
-              }}
-            >
-              {loading ? '更新中…' : '↺ 更新'}
-            </button>
-          </div>
+        {/* Legend — hide on very small screens */}
+        <div className="legend-row" style={{ display: 'flex', gap: 10, alignItems: 'center', marginLeft: 8 }}>
+          {([
+            ['available', '有空位'],
+            ['partial',   '部分開放'],
+            ['taken',     '已約滿'],
+          ] as [CourtStatus, string][]).map(([status, label]) => (
+            <span key={status} style={{ display: 'flex', alignItems: 'center', gap: 4,
+                                        fontSize: 11, color: '#4b5563', fontWeight: 500 }}>
+              <TennisBall color={STATUS_COLOR[status]} size={11} />
+              {label}
+            </span>
+          ))}
         </div>
 
-        {/* Map */}
-        <div style={{ flex: 1, padding: 12, minHeight: 0 }}>
-          <CourtMap courts={filtered} selected={selected} onSelect={setSelected} />
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {lastFetch && (
+            <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>
+              {lastFetch.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button onClick={refresh} disabled={loading} style={{
+            padding: '4px 10px', borderRadius: 20, border: 'none',
+            fontSize: 11, fontWeight: 600, cursor: loading ? 'wait' : 'pointer',
+            background: loading ? '#e5e7eb' : '#16a34a',
+            color: loading ? '#9ca3af' : 'white', whiteSpace: 'nowrap',
+          }}>
+            {loading ? '…' : '↺'}
+          </button>
+
+          {/* Mobile: list toggle button */}
+          <button
+            className="mobile-list-btn"
+            onClick={() => setSheetOpen(v => !v)}
+            style={{
+              padding: '4px 10px', borderRadius: 20, border: '1px solid #e5e7eb',
+              fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              background: sheetOpen ? '#166534' : 'white',
+              color: sheetOpen ? 'white' : '#166534',
+              display: 'none',  // shown via CSS media query
+            }}
+          >
+            {sheetOpen ? '✕ 關閉' : '☰ 球場'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Main content ── */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
+
+        {/* Desktop sidebar */}
+        <div className="desktop-sidebar" style={{
+          width: 300, minWidth: 300, flexShrink: 0,
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '2px 0 12px rgba(0,0,0,0.06)', zIndex: 10,
+        }}>
+          <CourtSidebar
+            courts={filtered}
+            selected={selected}
+            onSelect={setSelected}
+            filterDistrict={filterDistrict}
+            onFilterChange={setFilterDistrict}
+          />
+        </div>
+
+        {/* Map — always fills remaining space */}
+        <div style={{ flex: 1, padding: 12, minWidth: 0, minHeight: 0 }}>
+          <CourtMap courts={filtered} selected={selected} onSelect={handleSelectCourt} />
+        </div>
+
+        {/* Mobile bottom sheet */}
+        <div
+          className="mobile-sheet"
+          style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            background: 'white',
+            borderRadius: '20px 20px 0 0',
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
+            transform: sheetOpen ? 'translateY(0)' : 'translateY(calc(100% - 56px))',
+            transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+            zIndex: 30,
+            maxHeight: '75dvh',
+            display: 'flex', flexDirection: 'column',
+            // hidden on desktop
+          }}
+        >
+          {/* Drag handle / peek row */}
+          <div
+            onClick={() => setSheetOpen(v => !v)}
+            style={{
+              height: 56, flexShrink: 0, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', cursor: 'pointer', gap: 8, padding: '0 16px',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#d1d5db' }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', position: 'absolute' }}>
+              {sheetOpen ? '' : `🎾 ${filtered.length} 個球場`}
+            </span>
+          </div>
+
+          {/* Sheet content — same sidebar */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <CourtSidebar
+              courts={filtered}
+              selected={selected}
+              onSelect={(c) => { setSelected(c); setSheetOpen(true) }}
+              filterDistrict={filterDistrict}
+              onFilterChange={setFilterDistrict}
+            />
+          </div>
         </div>
       </div>
     </div>

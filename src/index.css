@@ -2,9 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Leaflet overrides */
+/* Leaflet */
 .leaflet-container {
   height: 100%;
   width: 100%;
-  border-radius: 0.75rem;
+  border-radius: 12px;
 }
+.leaflet-control-zoom { display: none; }
+
+/* Desktop: sidebar visible, sheet hidden */
+@media (min-width: 640px) {
+  .desktop-sidebar { display: flex !important; }
+  .mobile-sheet    { display: none !important; }
+  .mobile-list-btn { display: none !important; }
+}
+
+/* Mobile: sidebar hidden, sheet + toggle visible */
+@media (max-width: 639px) {
+  .desktop-sidebar { display: none !important; }
+  .mobile-sheet    { display: flex !important; }
+  .mobile-list-btn { display: block !important; }
+  .legend-row      { display: none !important; }
+
+  /* Map padding smaller on mobile */
+  .leaflet-container { border-radius: 0; }
+}
+
+/* Leaflet popup overrides */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important;
+  padding: 0 !important;
+}
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+}
+.leaflet-popup-tip-container { display: none; }
