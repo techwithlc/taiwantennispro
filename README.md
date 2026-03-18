@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# 台灣網球場地圖 🎾
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+即時查看大台北地區公共網球場的場地狀態，一眼看出哪裡有空位。
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **即時場地狀態** — 透過台北市體育局 VBS API 查詢各球場今日時段
+- **互動地圖** — Leaflet + CartoDB 底圖，點擊網球標記查看詳情
+- **時段一覽** — 每個球場顯示 06:00–22:00 各時段的可用狀態
+- **一鍵預約** — 直接連結到各場地的預約頁面
+- **響應式設計** — 桌面版側邊欄 + 手機版底部滑出面板
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer | Tech |
+|-------|------|
+| Frontend | React 19, TypeScript, Tailwind CSS |
+| Map | Leaflet + react-leaflet, CartoDB Positron tiles |
+| Backend | Netlify Functions (serverless) |
+| Data | 台北市體育局 VBS API、臺北市網球中心 |
+| Deploy | Netlify |
 
-## Expanding the ESLint configuration
+## 球場資料來源
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **台北市體育局** (vbs.sports.taipei) — 河濱公園、中正網球場、天母運動場等 16 座
+- **臺北市網球中心** — 內湖民權東路
+- **私人球場** — 南港臺北網球場
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Development
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+```bash
+# Install
+npm install
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Dev server
+npm run dev
+
+# Build
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Project Structure
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+  App.tsx              # 主頁面：top bar + sidebar + map + mobile sheet
+  components/
+    CourtSidebar.tsx   # 球場列表 + 篩選 + 選取詳情
+    CourtMap.tsx       # Leaflet 地圖 + 網球標記
+  data/courts.ts       # 球場靜態資料（座標、地址、VSN）
+  hooks/useAvailability.ts  # 即時場地查詢 hook
+  types/court.ts       # TypeScript 型別定義
+netlify/functions/
+  availability.mts     # Serverless proxy → VBS API
+```
+
+## License
+
+MIT
+
+---
+
+*powered by Lawrence Chen*
