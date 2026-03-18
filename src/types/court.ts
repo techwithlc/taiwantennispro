@@ -7,6 +7,7 @@ export interface TimeSlot {
 
 export interface Court {
   id: string
+  vsn: number | null   // vbs.sports.taipei venue serial number
   name: string
   nameEn: string
   district: string
