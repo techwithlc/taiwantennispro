@@ -4,42 +4,52 @@ import 'leaflet/dist/leaflet.css'
 import type { Court, CourtStatus } from '../types/court'
 import { STATUS_LABEL, SOURCE_LABEL } from '../data/courts'
 
-// Tennis ball SVG with status color — the seam curves are the signature look
-function tennisBallSvg(color: string, size: number, ring: boolean): string {
-  // Seam lines in white, slightly transparent
-  const seam = `
-    <path d="M${size * 0.2},${size * 0.5} Q${size * 0.35},${size * 0.2} ${size * 0.5},${size * 0.15} Q${size * 0.65},${size * 0.1} ${size * 0.8},${size * 0.5}"
-      fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="${size * 0.06}" stroke-linecap="round"/>
-    <path d="M${size * 0.2},${size * 0.5} Q${size * 0.35},${size * 0.8} ${size * 0.5},${size * 0.85} Q${size * 0.65},${size * 0.9} ${size * 0.8},${size * 0.5}"
-      fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="${size * 0.06}" stroke-linecap="round"/>
-  `
-  const ringEl = ring
-    ? `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="none" stroke="white" stroke-width="2.5" opacity="0.9"/>`
-    : ''
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="${color}"/>
-    ${seam}
-    ${ringEl}
-  </svg>`
-}
-
 const STATUS_COLOR: Record<CourtStatus, string> = {
-  available: '#16a34a',   // green-600
-  taken:     '#dc2626',   // red-600
-  partial:   '#d97706',   // amber-600
-  unknown:   '#9ca3af',   // gray-400
+  available: '#16a34a',
+  taken:     '#dc2626',
+  partial:   '#d97706',
+  unknown:   '#9ca3af',
 }
 
-function makeIcon(status: CourtStatus, isSelected: boolean): L.DivIcon {
-  const size = isSelected ? 40 : 30
-  const svg = tennisBallSvg(STATUS_COLOR[status], size, isSelected)
+const STATUS_GLOW: Record<CourtStatus, string> = {
+  available: 'rgba(22,163,74,0.35)',
+  taken:     'rgba(220,38,38,0.35)',
+  partial:   'rgba(217,119,6,0.35)',
+  unknown:   'rgba(156,163,175,0.2)',
+}
+
+function tennisBallHtml(color: string, glow: string, size: number, selected: boolean): string {
+  const s = size
+  const shadow = selected ? `drop-shadow(0 0 ${s * 0.3}px ${glow})` : 'none'
+  const ring = selected
+    ? `<circle cx="${s/2}" cy="${s/2}" r="${s/2-2}" fill="none" stroke="white" stroke-width="2.5" opacity="0.9"/>`
+    : ''
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"
+         style="filter:${shadow};overflow:visible;display:block">
+      <circle cx="${s/2}" cy="${s/2}" r="${s/2}" fill="${color}"/>
+      <radialGradient id="g${s}" cx="38%" cy="32%" r="65%">
+        <stop offset="0%" stop-color="white" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="black" stop-opacity="0.1"/>
+      </radialGradient>
+      <circle cx="${s/2}" cy="${s/2}" r="${s/2}" fill="url(#g${s})"/>
+      <path d="M${s*.18},${s*.5} Q${s*.32},${s*.17} ${s*.5},${s*.13} Q${s*.68},${s*.09} ${s*.82},${s*.5}"
+        fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="${s*.065}" stroke-linecap="round"/>
+      <path d="M${s*.18},${s*.5} Q${s*.32},${s*.83} ${s*.5},${s*.87} Q${s*.68},${s*.91} ${s*.82},${s*.5}"
+        fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="${s*.065}" stroke-linecap="round"/>
+      ${ring}
+    </svg>`
+}
+
+function makeIcon(status: CourtStatus, selected: boolean): L.DivIcon {
+  const size = selected ? 42 : 28
+  const html = tennisBallHtml(STATUS_COLOR[status], STATUS_GLOW[status], size, selected)
   return L.divIcon({
-    html: svg,
-    className: '',   // clear Leaflet's default white box
+    html,
+    className: '',
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -size / 2 - 4],
+    popupAnchor: [0, -size / 2 - 6],
   })
 }
 
@@ -52,13 +62,18 @@ interface Props {
 export default function CourtMap({ courts, onSelect, selected }: Props) {
   return (
     <MapContainer
-      center={[25.0478, 121.5319]}
+      center={[25.048, 121.532]}
       zoom={12}
-      className="h-full w-full rounded-xl"
+      className="h-full w-full"
+      style={{ borderRadius: '16px' }}
+      zoomControl={false}
     >
+      {/* CartoDB Positron — clean minimal tiles */}
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        subdomains="abcd"
+        maxZoom={19}
       />
       {courts.map((court) => (
         <Marker
@@ -66,16 +81,32 @@ export default function CourtMap({ courts, onSelect, selected }: Props) {
           position={[court.lat, court.lng]}
           icon={makeIcon(court.status, selected?.id === court.id)}
           eventHandlers={{ click: () => onSelect(court) }}
+          zIndexOffset={selected?.id === court.id ? 1000 : 0}
         >
-          <Popup>
-            <div className="text-sm min-w-[160px]">
-              <p className="font-semibold text-gray-900">🎾 {court.name}</p>
-              <p className="text-gray-500 text-xs mt-0.5">{court.district} · {SOURCE_LABEL[court.source]}</p>
-              <p className="mt-1 font-medium" style={{ color: STATUS_COLOR[court.status] }}>
+          <Popup closeButton={false} className="tennis-popup">
+            <div style={{ minWidth: 180, padding: '2px 0' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1a1a', marginBottom: 4 }}>
+                🎾 {court.name}
+              </div>
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+                {court.district} · {SOURCE_LABEL[court.source]}
+              </div>
+              <div style={{
+                display: 'inline-block',
+                padding: '2px 10px',
+                borderRadius: 99,
+                fontSize: 11,
+                fontWeight: 600,
+                background: STATUS_COLOR[court.status] + '22',
+                color: STATUS_COLOR[court.status],
+                border: `1px solid ${STATUS_COLOR[court.status]}44`,
+              }}>
                 {STATUS_LABEL[court.status]}
-              </p>
+              </div>
               {court.walkUpOnly && (
-                <p className="text-amber-600 text-xs mt-1">⚠️ 現場排隊</p>
+                <div style={{ fontSize: 11, color: '#d97706', marginTop: 6 }}>
+                  ⚠️ 現場排隊
+                </div>
               )}
             </div>
           </Popup>

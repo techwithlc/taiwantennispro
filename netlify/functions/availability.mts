@@ -1,50 +1,64 @@
 import type { Context } from '@netlify/functions'
 
-const VBS_BASE = 'https://vbs.sports.taipei'
-const GIS_URL  = `${VBS_BASE}/gis/`
-const API_URL  = `${VBS_BASE}/gis/x/xhrfunc.php`
+const VBS_VENUE_URL = 'https://vbs.sports.taipei/venues/?K=266'
+const LOAD_SCHED_URL = 'https://vbs.sports.taipei/_/x/xhrworkv3.php'
 
-// VSNs of courts with online booking data (discovered via API scan)
-// walk-up only courts return RETURN_FALSE — we mark them accordingly
-const BOOKABLE_VSNS = [267, 342, 489, 117]
+// All tennis court VSNs found via API scan
+const TENNIS_VSNS = [
+  117, 174, 201, 210, 239, 253, 266, 267,
+  305, 312, 320, 324, 341, 342, 343, 352, 425, 489,
+]
 
-function todayTaipei(): string {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+const PLAY_HOURS = Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
+
+function todayTaipei() {
+  const now = new Date()
+  const taipei = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }))
+  return {
+    year: taipei.getFullYear(),
+    month: taipei.getMonth() + 1,
+    day: taipei.getDate(),
+    dateStr: taipei.toISOString().slice(0, 10),
+  }
 }
-
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-// All possible 1-hour slots 08:00–22:00
-const ALL_SLOTS = Array.from({ length: 14 }, (_, i) => {
-  const h = String(8 + i).padStart(2, '0')
-  return `${h}:00`
-})
 
 async function getSession(): Promise<string> {
-  const res = await fetch(GIS_URL, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TaiwanTennisPro/1.0)' },
+  const res = await fetch(VBS_VENUE_URL, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+    },
   })
   const cookie = res.headers.get('set-cookie') ?? ''
-  const match = cookie.match(/PHPSESSID=([^;]+)/)
-  return match ? match[1] : ''
+  const m = cookie.match(/PHPSESSID=([^;]+)/)
+  return m ? m[1] : ''
 }
 
-async function getRent(vsn: number, sessionId: string): Promise<Record<string, { StartTime: string; EndTime: string }[]> | null> {
-  const res = await fetch(API_URL, {
+async function loadSched(vsn: number, sessionId: string, dateInfo: ReturnType<typeof todayTaipei>) {
+  const form = new FormData()
+  form.append('FUNC', 'LoadSched')
+  form.append('SY', String(dateInfo.year))
+  form.append('SM', String(dateInfo.month))
+  form.append('RSD', dateInfo.dateStr)
+  form.append('RED', dateInfo.dateStr)
+  form.append('VenueSN', String(vsn))
+  form.append('OrderNo', '')
+  form.append('ZRMode', 'N')
+  form.append('ZRTTimes', '1')
+  form.append('AddOrderMode', 'N')
+
+  const res = await fetch(LOAD_SCHED_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Referer': GIS_URL,
-      'User-Agent': 'Mozilla/5.0 (compatible; TaiwanTennisPro/1.0)',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Referer': VBS_VENUE_URL,
       'Cookie': `PHPSESSID=${sessionId}`,
     },
-    body: `FUNC=getRent&VSN=${vsn}`,
+    body: form,
   })
+
   const text = await res.text()
-  if (text === 'RETURN_FALSE' || text === '[]') return null
+  if (!text || text === 'RETURN_FALSE') return null
   try {
     return JSON.parse(text)
   } catch {
@@ -53,48 +67,53 @@ async function getRent(vsn: number, sessionId: string): Promise<Record<string, {
 }
 
 export default async function handler(_req: Request, _ctx: Context) {
-  const today = todayTaipei()
+  const dateInfo = todayTaipei()
 
   try {
     const sessionId = await getSession()
-    const results: Record<number, { status: string; slots: { time: string; available: boolean }[] }> = {}
+    const results: Record<number, {
+      status: string
+      bookedCount: number
+      availCount: number
+      slots: { time: string; available: boolean }[]
+    }> = {}
 
     await Promise.all(
-      BOOKABLE_VSNS.map(async (vsn) => {
-        const rentData = await getRent(vsn, sessionId)
+      TENNIS_VSNS.map(async (vsn) => {
+        const data = await loadSched(vsn, sessionId, dateInfo)
+        if (!data) return
 
-        if (!rentData) {
-          // Walk-up only or not in system
-          results[vsn] = { status: 'unknown', slots: [] }
-          return
-        }
+        const daySlots = data.RT?.[String(dateInfo.day)] ?? {}
 
-        const todayBooked = rentData[today] ?? {}
-        const bookedMinutes = new Set(
-          Object.values(todayBooked).map((s) => timeToMinutes(s.StartTime))
-        )
+        const slots = PLAY_HOURS.map((time) => {
+          const key = time.replace(':', '')  // "0800"
+          const slot = daySlots[key]
+          if (!slot) return { time, available: false }
+          // D=1 → booked, D=0 + IR=1 → available, IR=0 → closed
+          const available = slot.D === '0' && slot.IR !== '0'
+          return { time, available }
+        })
 
-        const slots = ALL_SLOTS.map((time) => ({
-          time,
-          available: !bookedMinutes.has(timeToMinutes(time)),
-        }))
+        const bookedCount = slots.filter((s) => !s.available).length
+        const availCount  = slots.filter((s) => s.available).length
+        const total = bookedCount + availCount
 
-        const availCount = slots.filter((s) => s.available).length
         const status =
-          availCount === 0 ? 'taken' :
-          availCount === slots.length ? 'available' :
-          'partial'
+          total === 0        ? 'unknown' :
+          bookedCount === 0  ? 'available' :
+          availCount === 0   ? 'taken' :
+                               'partial'
 
-        results[vsn] = { status, slots }
+        results[vsn] = { status, bookedCount, availCount, slots }
       })
     )
 
     return new Response(
-      JSON.stringify({ ok: true, date: today, courts: results }),
+      JSON.stringify({ ok: true, date: dateInfo.dateStr, courts: results }),
       {
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=300',  // cache 5 min
+          'Cache-Control': 'public, max-age=300',
           'Access-Control-Allow-Origin': '*',
         },
       }
