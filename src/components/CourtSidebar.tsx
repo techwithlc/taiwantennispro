@@ -36,7 +36,7 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
           <span className="text-xl">🎾</span>
           <div>
             <h1 className="text-sm font-bold text-gray-900 leading-none">台灣網球場地圖</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Taiwan Tennis Pro</p>
+            <p className="text-xs text-gray-400 mt-0.5">powered by Lawrence Chen</p>
           </div>
         </div>
 
