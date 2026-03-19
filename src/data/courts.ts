@@ -17,6 +17,7 @@ export const COURTS: Court[] = [
     bookingUrl: 'https://vbs.sports.taipei/gis/?SN=174',
     address: '大直橋至中山高速公路間（基隆河右岸）',
     walkUpOnly: true,
+    crowdNote: '教練常佔免費場教球，平日傍晚較嚴重',
   },
   {
     id: 'rainbow',
@@ -32,6 +33,7 @@ export const COURTS: Court[] = [
     bookingUrl: 'https://vbs.sports.taipei/gis/?SN=201',
     address: '基隆河中山高速公路至麥帥一橋間（基隆河右岸）',
     walkUpOnly: true,
+    crowdNote: '熱門場地，平日傍晚及假日幾乎滿場，建議一早前往',
   },
   {
     id: 'shuangyuan',
@@ -62,6 +64,7 @@ export const COURTS: Court[] = [
     bookingUrl: 'https://vbs.sports.taipei/gis/?SN=239',
     address: '跑馬場至雙園抽水站',
     walkUpOnly: true,
+    crowdNote: '教練教球常見，球籃佔場需留意',
   },
   {
     id: 'daonan-1',
@@ -153,6 +156,7 @@ export const COURTS: Court[] = [
     bookingUrl: 'https://vbs.sports.taipei/gis/?SN=320',
     address: '台北市松山區富錦街359巷2弄及新中街口',
     walkUpOnly: true,
+    crowdNote: '附近居民長期佔場，新手難排到',
   },
   {
     id: 'yanping',
@@ -183,6 +187,7 @@ export const COURTS: Court[] = [
     bookingUrl: 'https://vbs.sports.taipei/gis/?SN=341',
     address: '臺北市中山區圓山橋下10號水門（基隆河左岸）',
     walkUpOnly: true,
+    crowdNote: '常有教練佔場，線上預約易被包場',
   },
   {
     id: 'tianmu',
@@ -428,6 +433,7 @@ export const COURTS: Court[] = [
     bookingUrl: 'https://vbs.sports.taipei/',
     address: '台北市萬華區水源路199號',
     walkUpOnly: true,
+    crowdNote: '假日人多，需付費預約較保險',
   },
   {
     id: 'dahu-park',
@@ -458,6 +464,7 @@ export const COURTS: Court[] = [
     bookingUrl: 'https://vbs.sports.taipei/',
     address: '台北市內湖區內湖路二段175號旁',
     walkUpOnly: true,
+    crowdNote: '僅1面場地，先到先用易等候',
   },
   {
     id: 'qiangang-park',

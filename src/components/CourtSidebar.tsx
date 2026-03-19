@@ -191,9 +191,11 @@ export default function CourtSidebar({ courts, selected, onSelect, onDeselect, f
                       const h = parseInt(s.time)
                       return h >= 6 && h <= 22
                     }).map((slot) => (
-                      <div key={slot.time} title={`${slot.time} ${slot.available ? '可用' : '已約'}`}>
+                      <div key={slot.time} title={`${slot.time} ${court.walkUpOnly ? (slot.available ? '開放' : '未開放') : (slot.available ? '可用' : '已約')}`}>
                         <MiniTennisBall
-                          color={slot.available ? '#16a34a' : '#dc2626'}
+                          color={court.walkUpOnly
+                            ? (slot.available ? '#64748b' : '#cbd5e1')  // neutral gray for walk-up
+                            : (slot.available ? '#16a34a' : '#dc2626')}
                           size={9}
                         />
                       </div>
@@ -259,7 +261,14 @@ export default function CourtSidebar({ courts, selected, onSelect, onDeselect, f
             {/* Time slots grid */}
             {selected.slots.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#2d6a4f', marginBottom: 6 }}>今日時段</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#2d6a4f', marginBottom: 6 }}>
+                  {selected.walkUpOnly ? '今日開放時段' : '今日時段'}
+                </p>
+                {selected.walkUpOnly && (
+                  <p style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>
+                    ⚠ 開放時段僅供參考，實際使用需現場排隊
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-1">
                   {selected.slots.filter(s => {
                     const h = parseInt(s.time)
@@ -270,8 +279,12 @@ export default function CourtSidebar({ courts, selected, onSelect, onDeselect, f
                       style={{
                         fontSize: 11, padding: '3px 7px', borderRadius: 8,
                         fontFamily: 'monospace', fontWeight: 600,
-                        background: slot.available ? '#c8e639' : '#fee2e2',
-                        color: slot.available ? '#1a4731' : '#991b1b',
+                        background: selected.walkUpOnly
+                          ? (slot.available ? '#e2e8f0' : '#f1f5f9')
+                          : (slot.available ? '#c8e639' : '#fee2e2'),
+                        color: selected.walkUpOnly
+                          ? (slot.available ? '#475569' : '#94a3b8')
+                          : (slot.available ? '#1a4731' : '#991b1b'),
                         textDecoration: slot.available ? 'none' : 'line-through',
                         opacity: slot.available ? 1 : 0.6,
                       }}

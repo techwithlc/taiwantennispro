@@ -52,6 +52,18 @@ export function useAvailability(courts: Court[]) {
     }
 
     const api = data.courts[court.vsn]
+
+    // Walk-up courts: VBS "available" just means the hour is open, not physically empty.
+    // Keep slots (to show operating hours) but don't trust booking-based status.
+    if (court.walkUpOnly) {
+      return {
+        ...court,
+        status: 'unknown' as CourtStatus,
+        slots: api.slots as TimeSlot[],
+        lastUpdated: lastFetch?.toISOString() ?? court.lastUpdated,
+      }
+    }
+
     return {
       ...court,
       status: api.status as CourtStatus,
