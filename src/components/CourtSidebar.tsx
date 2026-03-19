@@ -79,7 +79,10 @@ interface Props {
 }
 
 export default function CourtSidebar({ courts, selected, onSelect, onDeselect, filterDistrict, onFilterChange, weather }: Props) {
-  const districts = ['全部', ...Array.from(new Set(courts.map((c) => c.district)))]
+  const TAIPEI_DISTRICTS = ['中山區', '內湖區', '萬華區', '文山區', '中正區', '松山區', '大同區', '士林區', '大安區', '南港區', '信義區', '北投區']
+  const allDistricts = Array.from(new Set(courts.map((c) => c.district)))
+  const taipeiDistricts = TAIPEI_DISTRICTS.filter(d => allDistricts.includes(d))
+  const newTaipeiDistricts = allDistricts.filter(d => !TAIPEI_DISTRICTS.includes(d))
 
   return (
     <aside className="flex flex-col h-full" style={{ background: '#fafdf7' }}>
@@ -116,9 +119,17 @@ export default function CourtSidebar({ courts, selected, onSelect, onDeselect, f
           onFocus={(e) => { e.target.style.borderColor = '#c8e639'; e.target.style.boxShadow = '0 0 0 3px rgba(200,230,57,0.25)' }}
           onBlur={(e) => { e.target.style.borderColor = '#c8dfc2'; e.target.style.boxShadow = 'none' }}
         >
-          {districts.map((d) => (
-            <option key={d} value={d}>{d === '全部' ? '🗺 全部區域' : d}</option>
-          ))}
+          <option value="全部">🗺 全部區域</option>
+          <optgroup label="台北市">
+            {taipeiDistricts.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </optgroup>
+          <optgroup label="新北市">
+            {newTaipeiDistricts.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </optgroup>
         </select>
 
         <p style={{ fontSize: 11, color: '#6b9080', marginTop: 8, fontWeight: 500 }}>
