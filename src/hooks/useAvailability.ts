@@ -46,24 +46,10 @@ export function useAvailability(courts: Court[]) {
   // Merge API data into court objects
   const enriched: Court[] = courts.map((court) => {
     if (!data || !court.vsn || !data.courts[court.vsn]) {
-      // Walk-up only courts: show as unknown
-      if (court.walkUpOnly) return { ...court, status: 'unknown' as CourtStatus }
       return court
     }
 
     const api = data.courts[court.vsn]
-
-    // Walk-up courts: VBS "available" just means the hour is open, not physically empty.
-    // Keep slots (to show operating hours) but don't trust booking-based status.
-    if (court.walkUpOnly) {
-      return {
-        ...court,
-        status: 'unknown' as CourtStatus,
-        slots: api.slots as TimeSlot[],
-        lastUpdated: lastFetch?.toISOString() ?? court.lastUpdated,
-      }
-    }
-
     return {
       ...court,
       status: api.status as CourtStatus,

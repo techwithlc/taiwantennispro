@@ -1,5 +1,5 @@
 import type { Court, CourtStatus } from '../types/court'
-import { STATUS_LABEL, SOURCE_LABEL } from '../data/courts'
+import { SOURCE_LABEL } from '../data/courts'
 import type { DistrictWeather } from '../hooks/useWeather'
 import WeatherBadge from './WeatherBadge'
 
@@ -25,17 +25,31 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-const STATUS_COLOR: Record<CourtStatus, string> = {
+// Booking-based colors (for courts with real booking data)
+const BOOK_COLOR: Record<CourtStatus, string> = {
   available: '#16a34a',
   taken:     '#dc2626',
   partial:   '#d97706',
   unknown:   '#9ca3af',
 }
-const STATUS_BG: Record<CourtStatus, string> = {
+const BOOK_BG: Record<CourtStatus, string> = {
   available: '#dcfce7',
   taken:     '#fee2e2',
   partial:   '#fef3c7',
   unknown:   '#f3f4f6',
+}
+// Facility-open colors (for walk-up courts — VBS = open hours, not booking)
+const OPEN_COLOR: Record<CourtStatus, string> = {
+  available: '#0284c7',  // blue — facility fully open today
+  partial:   '#d97706',  // amber — some hours closed
+  taken:     '#dc2626',  // red — facility closed today
+  unknown:   '#94a3b8',
+}
+const OPEN_BG: Record<CourtStatus, string> = {
+  available: '#e0f2fe',
+  partial:   '#fef3c7',
+  taken:     '#fee2e2',
+  unknown:   '#f1f5f9',
 }
 
 function MiniTennisBall({ color, size = 10 }: { color: string; size?: number }) {
@@ -52,21 +66,30 @@ function MiniTennisBall({ color, size = 10 }: { color: string; size?: number }) 
 }
 
 function statusLabel(court: Court): string {
-  if (!court.vsn) return '無即時資料'
-  if (court.walkUpOnly && court.status !== 'taken') return '現場排隊'
-  return STATUS_LABEL[court.status]
+  const hasData = court.vsn && court.status !== 'unknown'
+  if (!hasData) return court.walkUpOnly ? '現場排隊' : '可預約'
+  if (court.walkUpOnly) {
+    // VBS data = facility open hours (not booking availability)
+    if (court.status === 'available') return '今日開放'
+    if (court.status === 'partial') return '部分時段'
+    return '今日未開放'
+  }
+  // Real booking data
+  if (court.status === 'available') return '可約有位'
+  if (court.status === 'partial') return '部分有位'
+  return '已約滿'
 }
 
 function statusColor(court: Court): string {
-  if (!court.vsn) return '#94a3b8'
-  if (court.walkUpOnly && court.status !== 'taken') return '#6b7280'
-  return STATUS_COLOR[court.status]
+  const hasData = court.vsn && court.status !== 'unknown'
+  if (!hasData) return '#94a3b8'
+  return court.walkUpOnly ? OPEN_COLOR[court.status] : BOOK_COLOR[court.status]
 }
 
 function statusBg(court: Court): string {
-  if (!court.vsn) return '#f1f5f9'
-  if (court.walkUpOnly && court.status !== 'taken') return '#f1f5f9'
-  return STATUS_BG[court.status]
+  const hasData = court.vsn && court.status !== 'unknown'
+  if (!hasData) return '#f1f5f9'
+  return court.walkUpOnly ? OPEN_BG[court.status] : BOOK_BG[court.status]
 }
 
 interface Props {
@@ -194,7 +217,7 @@ export default function CourtSidebar({ courts, selected, onSelect, onDeselect, f
                       <div key={slot.time} title={`${slot.time} ${court.walkUpOnly ? (slot.available ? '開放' : '未開放') : (slot.available ? '可用' : '已約')}`}>
                         <MiniTennisBall
                           color={court.walkUpOnly
-                            ? (slot.available ? '#64748b' : '#cbd5e1')  // neutral gray for walk-up
+                            ? (slot.available ? '#0284c7' : '#cbd5e1')  // blue for open, light gray for closed
                             : (slot.available ? '#16a34a' : '#dc2626')}
                           size={9}
                         />
@@ -280,10 +303,10 @@ export default function CourtSidebar({ courts, selected, onSelect, onDeselect, f
                         fontSize: 11, padding: '3px 7px', borderRadius: 8,
                         fontFamily: 'monospace', fontWeight: 600,
                         background: selected.walkUpOnly
-                          ? (slot.available ? '#e2e8f0' : '#f1f5f9')
+                          ? (slot.available ? '#e0f2fe' : '#f1f5f9')
                           : (slot.available ? '#c8e639' : '#fee2e2'),
                         color: selected.walkUpOnly
-                          ? (slot.available ? '#475569' : '#94a3b8')
+                          ? (slot.available ? '#0369a1' : '#94a3b8')
                           : (slot.available ? '#1a4731' : '#991b1b'),
                         textDecoration: slot.available ? 'none' : 'line-through',
                         opacity: slot.available ? 1 : 0.6,

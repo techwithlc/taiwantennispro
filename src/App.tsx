@@ -4,15 +4,8 @@ import CourtSidebar from './components/CourtSidebar'
 import { COURTS } from './data/courts'
 import { useAvailability } from './hooks/useAvailability'
 import { useWeather } from './hooks/useWeather'
-import type { Court, CourtStatus } from './types/court'
+import type { Court } from './types/court'
 import './index.css'
-
-const STATUS_COLOR: Record<CourtStatus, string> = {
-  available: '#16a34a',
-  taken:     '#dc2626',
-  partial:   '#d97706',
-  unknown:   '#9ca3af',
-}
 
 function TennisBall({ color, size = 12 }: { color: string; size?: number }) {
   const s = size
@@ -57,18 +50,20 @@ export default function App() {
           台灣網球場地圖
         </span>
 
-        <div className="legend-row" style={{ display: 'flex', gap: 10, alignItems: 'center', marginLeft: 8 }}>
+        <div className="legend-row" style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 8, flexWrap: 'wrap' }}>
           {([
-            ['available', '有空位'],
-            ['partial',   '部分開放'],
-            ['taken',     '已約滿'],
-          ] as [CourtStatus, string][]).map(([status, label]) => (
-            <span key={status} style={{
+            ['#16a34a', '可約有位'],
+            ['#d97706', '部分開放'],
+            ['#dc2626', '已約滿'],
+            ['#0284c7', '今日開放'],
+            ['#9ca3af', '無資料'],
+          ] as [string, string][]).map(([color, label]) => (
+            <span key={label} style={{
               display: 'flex', alignItems: 'center', gap: 4,
               fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: 500,
               background: 'rgba(255,255,255,0.12)', padding: '2px 8px', borderRadius: 99,
             }}>
-              <TennisBall color={STATUS_COLOR[status]} size={10} />
+              <TennisBall color={color} size={10} />
               {label}
             </span>
           ))}

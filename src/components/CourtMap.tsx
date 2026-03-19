@@ -2,20 +2,33 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Court, CourtStatus } from '../types/court'
-import { STATUS_LABEL, SOURCE_LABEL } from '../data/courts'
+import { SOURCE_LABEL } from '../data/courts'
 import type { DistrictWeather } from '../hooks/useWeather'
 
-const STATUS_COLOR: Record<CourtStatus, string> = {
+// Booking-based marker colors
+const BOOK_COLOR: Record<CourtStatus, string> = {
   available: '#16a34a',
   taken:     '#dc2626',
   partial:   '#d97706',
   unknown:   '#9ca3af',
 }
-
-const STATUS_GLOW: Record<CourtStatus, string> = {
+const BOOK_GLOW: Record<CourtStatus, string> = {
   available: 'rgba(22,163,74,0.35)',
   taken:     'rgba(220,38,38,0.35)',
   partial:   'rgba(217,119,6,0.35)',
+  unknown:   'rgba(156,163,175,0.2)',
+}
+// Walk-up facility-open marker colors (blue = open)
+const OPEN_COLOR: Record<CourtStatus, string> = {
+  available: '#0284c7',
+  partial:   '#d97706',
+  taken:     '#dc2626',
+  unknown:   '#9ca3af',
+}
+const OPEN_GLOW: Record<CourtStatus, string> = {
+  available: 'rgba(2,132,199,0.35)',
+  partial:   'rgba(217,119,6,0.35)',
+  taken:     'rgba(220,38,38,0.35)',
   unknown:   'rgba(156,163,175,0.2)',
 }
 
@@ -42,9 +55,11 @@ function tennisBallHtml(color: string, glow: string, size: number, selected: boo
     </svg>`
 }
 
-function makeIcon(status: CourtStatus, selected: boolean): L.DivIcon {
+function makeIcon(court: Court, selected: boolean): L.DivIcon {
+  const colors = court.walkUpOnly ? OPEN_COLOR : BOOK_COLOR
+  const glows = court.walkUpOnly ? OPEN_GLOW : BOOK_GLOW
   const size = selected ? 42 : 28
-  const html = tennisBallHtml(STATUS_COLOR[status], STATUS_GLOW[status], size, selected)
+  const html = tennisBallHtml(colors[court.status], glows[court.status], size, selected)
   return L.divIcon({
     html,
     className: selected ? 'marker-selected' : '',
@@ -55,15 +70,22 @@ function makeIcon(status: CourtStatus, selected: boolean): L.DivIcon {
 }
 
 function popupStatusLabel(court: Court): string {
-  if (!court.vsn) return '無即時資料'
-  if (court.walkUpOnly && court.status !== 'taken') return '現場排隊'
-  return STATUS_LABEL[court.status]
+  const hasData = court.vsn && court.status !== 'unknown'
+  if (!hasData) return court.walkUpOnly ? '現場排隊' : '可預約'
+  if (court.walkUpOnly) {
+    if (court.status === 'available') return '今日開放'
+    if (court.status === 'partial') return '部分時段'
+    return '今日未開放'
+  }
+  if (court.status === 'available') return '可約有位'
+  if (court.status === 'partial') return '部分有位'
+  return '已約滿'
 }
 
 function popupStatusColor(court: Court): string {
-  if (!court.vsn) return '#94a3b8'
-  if (court.walkUpOnly && court.status !== 'taken') return '#64748b'
-  return STATUS_COLOR[court.status]
+  const hasData = court.vsn && court.status !== 'unknown'
+  if (!hasData) return '#94a3b8'
+  return court.walkUpOnly ? OPEN_COLOR[court.status] : BOOK_COLOR[court.status]
 }
 
 function wxEmoji(wx: string, pop: number): string {
@@ -99,7 +121,7 @@ export default function CourtMap({ courts, onSelect, selected, weather }: Props)
         <Marker
           key={court.id}
           position={[court.lat, court.lng]}
-          icon={makeIcon(court.status, selected?.id === court.id)}
+          icon={makeIcon(court, selected?.id === court.id)}
           eventHandlers={{ click: () => onSelect(court) }}
           zIndexOffset={selected?.id === court.id ? 1000 : 0}
         >
