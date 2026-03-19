@@ -19,5 +19,6 @@ export interface Court {
   bookingUrl: string
   address: string
   walkUpOnly: boolean
+  crowdNote?: string    // occupancy / usage tip shown as amber banner
   lastUpdated?: string  // ISO timestamp, undefined until first API fetch
 }

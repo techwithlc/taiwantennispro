@@ -3,6 +3,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Court, CourtStatus } from '../types/court'
 import { STATUS_LABEL, SOURCE_LABEL } from '../data/courts'
+import type { DistrictWeather } from '../hooks/useWeather'
 
 const STATUS_COLOR: Record<CourtStatus, string> = {
   available: '#16a34a',
@@ -65,17 +66,25 @@ function popupStatusColor(court: Court): string {
   return STATUS_COLOR[court.status]
 }
 
+function wxEmoji(wx: string, pop: number): string {
+  if (pop >= 60 || /雨/.test(wx)) return '🌧'
+  if (/陰/.test(wx)) return '☁️'
+  if (/雲/.test(wx)) return '⛅'
+  return '☀️'
+}
+
 interface Props {
   courts: Court[]
   onSelect: (court: Court) => void
   selected: Court | null
+  weather?: Record<string, DistrictWeather>
 }
 
-export default function CourtMap({ courts, onSelect, selected }: Props) {
+export default function CourtMap({ courts, onSelect, selected, weather }: Props) {
   return (
     <MapContainer
-      center={[25.048, 121.532]}
-      zoom={12}
+      center={[25.02, 121.50]}
+      zoom={11}
       className="h-full w-full"
       style={{ borderRadius: '16px' }}
       zoomControl={false}
@@ -124,6 +133,14 @@ export default function CourtMap({ courts, onSelect, selected }: Props) {
                   📡 未接入即時系統
                 </div>
               )}
+              {weather?.[court.district] && (() => {
+                const w = weather[court.district]
+                return (
+                  <div style={{ fontSize: 11, color: '#6b9080', marginTop: 6 }}>
+                    {wxEmoji(w.wx, w.pop)} {w.temp}° · 降雨 {w.pop}%
+                  </div>
+                )
+              })()}
             </div>
           </Popup>
         </Marker>

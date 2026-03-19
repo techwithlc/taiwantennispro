@@ -3,6 +3,7 @@ import CourtMap from './components/CourtMap'
 import CourtSidebar from './components/CourtSidebar'
 import { COURTS } from './data/courts'
 import { useAvailability } from './hooks/useAvailability'
+import { useWeather } from './hooks/useWeather'
 import type { Court, CourtStatus } from './types/court'
 import './index.css'
 
@@ -32,6 +33,7 @@ export default function App() {
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const { courts: liveCourts, loading, error, lastFetch, refresh } = useAvailability(COURTS)
+  const { weather } = useWeather()
 
   const filtered = useMemo(
     () => filterDistrict === '全部' ? liveCourts : liveCourts.filter((c) => c.district === filterDistrict),
@@ -120,12 +122,13 @@ export default function App() {
             onSelect={setSelected}
             filterDistrict={filterDistrict}
             onFilterChange={setFilterDistrict}
+            weather={weather}
           />
         </div>
 
         {/* Map */}
         <div className="map-wrapper" style={{ flex: 1, padding: 12, minWidth: 0, minHeight: 0, position: 'relative', zIndex: 0 }}>
-          <CourtMap courts={filtered} selected={selected} onSelect={(c) => { setSelected(c); setSheetOpen(true) }} />
+          <CourtMap courts={filtered} selected={selected} onSelect={(c) => { setSelected(c); setSheetOpen(true) }} weather={weather} />
         </div>
 
         {/* FAB — mobile only */}

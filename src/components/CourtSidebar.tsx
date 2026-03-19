@@ -1,7 +1,19 @@
 import type { Court, CourtStatus } from '../types/court'
 import { STATUS_LABEL, SOURCE_LABEL } from '../data/courts'
+import type { DistrictWeather } from '../hooks/useWeather'
+import WeatherBadge from './WeatherBadge'
 
-const APPROVED_DOMAINS = ['vbs.sports.taipei', 'tsc.taipei', 'www.tsc.taipei', 'www.taipeitenniscourt.com']
+const APPROVED_DOMAINS = [
+  'vbs.sports.taipei', 'tsc.taipei', 'www.tsc.taipei', 'www.taipeitenniscourt.com',
+  // 運動中心預約系統
+  'daan.sporetrofit.com', 'zhongshan.sporetrofit.com', 'nangang.sporetrofit.com',
+  'xinyi.sporetrofit.com', 'shilin.sporetrofit.com', 'neihu.sporetrofit.com',
+  'beitou.sporetrofit.com', 'wanhua.sporetrofit.com', 'wenshan.sporetrofit.com',
+  'songshan.sporetrofit.com', 'banqiao.sporetrofit.com', 'xinzhuang.sporetrofit.com',
+  'sanchong.sporetrofit.com', 'zhonghe.sporetrofit.com', 'yonghe.sporetrofit.com',
+  'xindian.sporetrofit.com', 'xizhi.sporetrofit.com', 'tucheng.sporetrofit.com',
+  'luzhou.sporetrofit.com', 'linkou.sporetrofit.com', 'tamsui.sporetrofit.com',
+]
 
 function isSafeUrl(url: string): boolean {
   try {
@@ -62,9 +74,10 @@ interface Props {
   onSelect: (court: Court) => void
   filterDistrict: string
   onFilterChange: (d: string) => void
+  weather?: Record<string, DistrictWeather>
 }
 
-export default function CourtSidebar({ courts, selected, onSelect, filterDistrict, onFilterChange }: Props) {
+export default function CourtSidebar({ courts, selected, onSelect, filterDistrict, onFilterChange, weather }: Props) {
   const districts = ['全部', ...Array.from(new Set(courts.map((c) => c.district)))]
 
   return (
@@ -198,6 +211,24 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
               </span>
             </div>
             <p style={{ fontSize: 11, color: '#6b9080', marginBottom: 10 }}>{selected.address}</p>
+
+            {/* Crowd note */}
+            {selected.crowdNote && (
+              <div style={{
+                background: '#fffbeb', border: '1px solid #fcd34d',
+                borderRadius: 10, padding: '8px 10px', marginBottom: 10,
+                fontSize: 12, color: '#92400e', fontWeight: 600,
+              }}>
+                💡 {selected.crowdNote}
+              </div>
+            )}
+
+            {/* Weather */}
+            {weather?.[selected.district] && (
+              <div style={{ marginBottom: 10 }}>
+                <WeatherBadge weather={weather[selected.district]} />
+              </div>
+            )}
 
             {/* Time slots grid */}
             {selected.slots.length > 0 && (
