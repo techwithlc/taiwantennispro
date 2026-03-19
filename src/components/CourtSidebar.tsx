@@ -5,20 +5,21 @@ import WeatherBadge from './WeatherBadge'
 
 const APPROVED_DOMAINS = [
   'vbs.sports.taipei', 'tsc.taipei', 'www.tsc.taipei', 'www.taipeitenniscourt.com',
-  // 運動中心預約系統
-  'daan.sporetrofit.com', 'zhongshan.sporetrofit.com', 'nangang.sporetrofit.com',
-  'xinyi.sporetrofit.com', 'shilin.sporetrofit.com', 'neihu.sporetrofit.com',
-  'beitou.sporetrofit.com', 'wanhua.sporetrofit.com', 'wenshan.sporetrofit.com',
-  'songshan.sporetrofit.com', 'banqiao.sporetrofit.com', 'xinzhuang.sporetrofit.com',
-  'sanchong.sporetrofit.com', 'zhonghe.sporetrofit.com', 'yonghe.sporetrofit.com',
-  'xindian.sporetrofit.com', 'xizhi.sporetrofit.com', 'tucheng.sporetrofit.com',
-  'luzhou.sporetrofit.com', 'linkou.sporetrofit.com', 'tamsui.sporetrofit.com',
+  // 台北市運動中心 (CYC 救國團 + 其他)
+  'dasc.cyc.org.tw', 'cssc.cyc.org.tw', 'ngsc.cyc.org.tw', 'nhsc.cyc.org.tw',
+  'wssc.cyc.org.tw', 'xysc.teamxports.com', 'www.slsc-taipei.org',
+  'www.btsport.org.tw', 'whsc.com.tw', 'sssc.com.tw',
+  // 新北市運動中心
+  'www.bqsports.com.tw', 'www.xzsports.com.tw', 'www.scsports.com.tw',
+  'www.zhsc.com.tw', 'yhcsc.cyc.org.tw', 'www.xdsports.com.tw',
+  'xzcsc.cyc.org.tw', 'www.tcsports.com.tw', 'lzsc.chanchao.com.tw',
+  'lkcsc.cyc.org.tw', 'www.tssc.com.tw',
 ]
 
 function isSafeUrl(url: string): boolean {
   try {
     const parsed = new URL(url)
-    return parsed.protocol === 'https:' && APPROVED_DOMAINS.some(d => parsed.hostname === d || parsed.hostname.endsWith('.' + d))
+    return (parsed.protocol === 'https:' || parsed.protocol === 'http:') && APPROVED_DOMAINS.some(d => parsed.hostname === d || parsed.hostname.endsWith('.' + d))
   } catch {
     return false
   }
