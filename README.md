@@ -1,28 +1,28 @@
 # 台灣網球場地圖 🎾
 
-Real-time availability map for 47 public tennis courts across Greater Taipei. Scrapes government booking systems, overlays weather data, and distinguishes between bookable vs walk-up courts — because "available" means very different things depending on the venue type.
+大台北地區 47 座公共網球場的即時狀態地圖。爬取政府預約系統、疊加天氣資料，並區分「可預約」與「現場排隊」兩種場地 — 因為「有空位」在不同場地類型下，意義完全不同。
 
 **Live:** [taiwantennispro.netlify.app](https://taiwantennispro.netlify.app)
 
-## Why this exists
+## 為什麼做這個
 
-Taipei has 47+ public tennis courts spread across riverside parks, sports centers, and city parks. The booking data lives in a legacy PHP system (VBS) that wasn't designed for quick lookups. Riverside courts are free but walk-up only — the VBS system still tracks them, but "available" just means the facility is open, not that courts are empty. This distinction trips up every player who checks online and shows up expecting an empty court.
+台北有 47+ 座公共網球場，分散在河濱公園、運動中心、市區公園。預約資料放在一個 legacy PHP 系統（VBS）裡，不是設計來給人快速查詢的。河濱球場免費但只能現場排隊 — VBS 系統仍有追蹤這些場地，但「可用」只代表設施開放，不代表場地沒人。這個語義落差讓每個查了網站就跑去現場的球友都踩過坑。
 
-This project fixes that by:
-1. Scraping the VBS API and presenting it honestly
-2. Separating **booking availability** (green) from **facility hours** (blue) in the UI
-3. Adding crowd-sourced occupancy tips for courts with known issues (coach occupation, elderly regulars, etc.)
+這個專案解決的方式：
+1. 爬取 VBS API，**誠實呈現**資料的真正含義
+2. UI 上將**預約空位**（綠色）與**設施開放時段**（藍色）明確分開
+3. 加入社群回報的佔用提示（教練佔場、長輩固定班底等已知問題）
 
-## Architecture
+## 系統架構
 
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Browser    │────▶│  Netlify CDN     │────▶│  Static Assets  │
+│   瀏覽器     │────▶│  Netlify CDN     │────▶│  靜態資源        │
 │  React SPA   │     │  (edge cache)    │     │  (Vite build)   │
 └──────┬───────┘     └──────────────────┘     └─────────────────┘
        │
-       │ /api/availability (5 min poll)
-       │ /api/weather      (30 min poll)
+       │ /api/availability (每 5 分鐘輪詢)
+       │ /api/weather      (每 30 分鐘輪詢)
        ▼
 ┌──────────────────┐
 │ Netlify Functions │
@@ -32,126 +32,126 @@ This project fixes that by:
        ▼      ▼
 ┌──────────┐ ┌──────────────┐
 │ VBS API  │ │ Perplexity   │
-│ (Taipei  │ │ AI API       │
-│  Gov PHP)│ │ (weather)    │
+│ (台北市   │ │ AI API       │
+│  體育局)  │ │ (天氣查詢)   │
 └──────────┘ └──────────────┘
 ```
 
-### Data flow: VBS scraping
+### 資料流：VBS 爬蟲
 
-The Taipei Sports Bureau runs `vbs.sports.taipei` — a PHP app with session-based auth. To get court schedules:
+台北市體育局的 `vbs.sports.taipei` 是一個 PHP 應用，使用 session-based auth。取得場地時刻表的流程：
 
-1. `GET /venues/?K=266` → grab `PHPSESSID` from `Set-Cookie`
-2. `POST /_/x/xhrworkv3.php` with `FUNC=LoadSched` + venue serial number (VSN) → JSON schedule for the day
-3. Parse `slot.D` (booked flag) and `slot.IR` (open flag) per hour
+1. `GET /venues/?K=266` → 從 `Set-Cookie` 取得 `PHPSESSID`
+2. `POST /_/x/xhrworkv3.php`，帶 `FUNC=LoadSched` + 場地序號 (VSN) → 當日 JSON 時刻表
+3. 解析每個時段的 `slot.D`（預約旗標）和 `slot.IR`（開放旗標）
 
-We fan out 16 parallel requests (one per VSN) with 8s timeouts. The serverless function caches responses for 5 minutes via `Cache-Control`.
+我們對 16 個 VSN 發出並行請求，每個設 8 秒 timeout。Serverless function 透過 `Cache-Control` 快取 5 分鐘。
 
-**Key insight:** For walk-up courts (`walkUpOnly: true`), the VBS "available" flag means "the facility is open during this hour" — not "the court is physically empty." These courts can't be booked online, so `D` is always `0`. We surface this as "今日開放" (blue) instead of "有空位" (green) to avoid misleading users.
+**關鍵洞察：** 現場排隊球場（`walkUpOnly: true`）的 VBS「可用」旗標，意思是「這個時段設施有開放」— 不是「場地現在沒人」。這些球場無法線上預約，所以 `D` 永遠是 `0`。我們把這類狀態顯示為「今日開放」（藍色）而非「有空位」（綠色），避免誤導使用者。
 
-### Display logic
+### 顯示邏輯
 
-Courts split into two semantic tracks with different status vocabularies:
+場地分為兩種語義軌道，使用不同的狀態詞彙：
 
-| | Has live data | No live data |
+| | 有即時資料 | 無即時資料 |
 |---|---|---|
-| **Bookable** | 🟢 可約有位 / 🟡 部分有位 / 🔴 已約滿 | Gray: 可預約 |
-| **Walk-up** | 🔵 今日開放 / 🟡 部分時段 / 🔴 今日未開放 | Gray: 現場排隊 |
+| **可預約** | 🟢 可約有位 / 🟡 部分有位 / 🔴 已約滿 | 灰色：可預約 |
+| **現場排隊** | 🔵 今日開放 / 🟡 部分時段 / 🔴 今日未開放 | 灰色：現場排隊 |
 
-Map markers use the same color coding: green/red for bookable courts, blue for walk-up. A gray marker means no real-time data — go check the venue's website.
+地圖標記同步對應：綠/紅 = 可預約球場，藍 = 現場排隊球場，灰 = 無即時資料。
 
-### Weather
+### 天氣整合
 
-Weather is supplementary — it silently fails without breaking the app (`useWeather` swallows errors). We use Perplexity's sonar model to get per-district weather as structured JSON. Cache: 30 min server-side, 30 min client-side polling.
+天氣是輔助資訊 — 查詢失敗時靜默降級，不影響主功能（`useWeather` 吞掉 error）。透過 Perplexity sonar model 一次取得 23 個行政區的結構化天氣 JSON。快取策略：server 端 30 分鐘，client 端 30 分鐘輪詢。
 
-**Why Perplexity instead of CWA (Central Weather Administration)?** CWA's open data API requires navigating forecast dataset codes (`F-D0047-061` for Taipei, `F-D0047-069` for New Taipei) and parsing deeply nested XML/JSON forecast intervals. Perplexity gives us a single structured response for all 23 districts in one call, with current conditions instead of 3-hour forecast windows.
+**為什麼用 Perplexity 而不是中央氣象署 (CWA)？** CWA 的開放資料 API 需要針對不同資料集代碼操作（台北 `F-D0047-061`、新北 `F-D0047-069`），並解析深層巢狀的 XML/JSON 預報區間。Perplexity 一次 API call 就能拿到全部 23 區的當前天氣，而非 3 小時預報區間。
 
-Trade-off: we're dependent on an LLM for weather accuracy. Acceptable because weather here is a "should I bring an umbrella" hint, not safety-critical data.
+取捨：天氣準確度依賴 LLM。可以接受，因為這裡的天氣只是「要不要帶傘」的參考，不是安全關鍵資料。
 
-### Security
+### 安全性
 
-- **URL allowlisting:** All booking links are validated against `APPROVED_DOMAINS` before rendering as `<a>` tags. No user-generated URLs.
-- **CORS:** API responses are locked to the production origin.
-- **No API keys in client:** Both API keys (VBS session, Perplexity) live in serverless functions only. Client never sees them.
-- **AbortSignal timeouts:** All upstream fetches have 8s/15s hard timeouts to prevent function hangs.
+- **URL 白名單：** 所有預約連結在渲染為 `<a>` 前，都會經過 `APPROVED_DOMAINS` 驗證，不接受任何使用者輸入的 URL
+- **CORS：** API 回應鎖定 production origin
+- **API key 不進 client：** VBS session 和 Perplexity key 都只存在 serverless function 中，前端完全接觸不到
+- **AbortSignal timeout：** 所有上游請求設定 8s/15s 硬超時，防止 function hang 住
 
-## Tech Stack
+## 技術選型
 
-| Layer | Choice | Why |
-|-------|--------|-----|
-| Frontend | React 19 + TypeScript | Type safety across court data model; React for component reuse (sidebar = desktop + mobile sheet) |
-| Map | Leaflet + react-leaflet | Lightweight, no API key needed (vs Google Maps), CartoDB Positron tiles for clean look |
-| Styling | Tailwind CSS + inline styles | Tailwind for layout utilities, inline for dynamic status-based colors (computed at render) |
-| Backend | Netlify Functions | Zero-config serverless, same deploy as frontend, free tier handles the traffic |
-| Weather | Perplexity AI (sonar) | One API call for all 23 districts vs CWA's per-dataset approach |
-| Deploy | Netlify | Git push → deploy. Edge CDN. Environment variables for secrets |
+| 層級 | 選擇 | 為什麼 |
+|------|------|--------|
+| 前端 | React 19 + TypeScript | 球場資料模型需要型別安全；React 元件可在桌面 sidebar 和手機 bottom sheet 間複用 |
+| 地圖 | Leaflet + react-leaflet | 輕量、不需 API key（對比 Google Maps），CartoDB Positron 底圖乾淨好看 |
+| 樣式 | Tailwind CSS + inline styles | Tailwind 處理佈局，inline 處理動態狀態顏色（render 時計算） |
+| 後端 | Netlify Functions | 零設定 serverless，與前端同一個 deploy，free tier 足夠應付流量 |
+| 天氣 | Perplexity AI (sonar) | 一次 API call 查 23 區，對比 CWA 需要逐資料集處理 |
+| 部署 | Netlify | Git push → 自動部署，Edge CDN，環境變數管理 secrets |
 
-**Dependency count: 4 runtime deps** (react, react-dom, leaflet, react-leaflet). Intentionally minimal.
+**Runtime 依賴只有 4 個**（react, react-dom, leaflet, react-leaflet）。刻意保持最小化。
 
-## Court Data (47 venues)
+## 球場資料（47 座）
 
-| Type | Count | Data source | Real-time? |
-|------|-------|-------------|------------|
-| Taipei riverside parks | 14 | VBS API (16 VSNs) | Yes — facility open hours |
-| Taipei bookable venues | 2 | VBS API | Yes — actual booking status |
-| Taipei sports centers | 10 | Official websites | No — link-only |
-| Taipei city parks | 5 | Walk-up only | No |
-| New Taipei sports centers | 11 | Official websites | No — link-only |
-| New Taipei riverside | 3 | Walk-up only | No |
-| Taipei Tennis Center | 1 | tsc.taipei | No — link-only |
-| Private | 1 | taipeitenniscourt.com | No — link-only |
+| 類型 | 數量 | 資料來源 | 有即時資料？ |
+|------|------|----------|-------------|
+| 台北市河濱公園 | 14 座 | VBS API（16 個 VSN） | 有 — 設施開放時段 |
+| 台北市可預約場地 | 2 座 | VBS API | 有 — 實際預約狀態 |
+| 台北市運動中心 | 10 座 | 各運動中心官網 | 無 — 僅連結 |
+| 台北市公園 | 5 座 | 現場排隊制 | 無 |
+| 新北市運動中心 | 11 座 | 各運動中心官網 | 無 — 僅連結 |
+| 新北市河濱 | 3 座 | 現場排隊制 | 無 |
+| 臺北市網球中心 | 1 座 | tsc.taipei | 無 — 僅連結 |
+| 私人球場 | 1 座 | taipeitenniscourt.com | 無 — 僅連結 |
 
-## Known Limitations
+## 已知限制
 
-- **VBS is a scraping target, not a stable API.** If Taipei City changes their PHP endpoints or session logic, the scraper breaks. No SLA.
-- **Walk-up court "availability" is inherently unknowable remotely.** We show facility hours + community tips, but can't tell you if someone's physically on the court. A crowdsourcing feature (user-reported status) is the real fix — it's on the roadmap.
-- **Weather via LLM is approximate.** Perplexity may hallucinate or return stale weather. We treat it as best-effort supplementary info.
-- **Sports center data is static.** We link to their booking sites but don't scrape them — each center uses a different vendor system (CYC, teamXports, etc.). Not worth the maintenance cost for 21 different scrapers.
-- **Single-region.** Currently Taipei + New Taipei only. Expanding to other cities requires finding their booking systems (each city runs its own).
+- **VBS 是爬蟲目標，不是穩定 API。** 台北市改 PHP endpoint 或 session 邏輯，爬蟲就會壞。沒有 SLA。
+- **現場排隊球場的「實際佔用」無法遠端得知。** 我們提供設施時段 + 社群佔用提示，但沒辦法告訴你場地上現在有沒有人。真正的解法是 crowdsourcing（使用者回報），已在 roadmap 上。
+- **LLM 天氣有誤差風險。** Perplexity 可能 hallucinate 或回傳過時天氣。我們把它當 best-effort 的輔助資訊處理。
+- **運動中心資料是靜態的。** 我們連結到各中心的預約網站，但沒有爬取 — 每個中心用不同廠商系統（CYC、teamXports 等），為 21 個不同系統寫爬蟲的維護成本不值得。
+- **目前只有雙北。** 擴展到其他縣市需要找到各自的預約系統（每個縣市各自為政）。
 
-## Development
+## 開發
 
 ```bash
-npm install         # 4 runtime deps, ~15 dev deps
-netlify dev         # local dev with serverless functions
+npm install         # 4 個 runtime deps，約 15 個 dev deps
+netlify dev         # 本地開發（含 serverless functions）
 npm run build       # tsc + vite production build
 ```
 
-### Environment Variables (Netlify)
+### 環境變數（Netlify）
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PERPLEXITY_API_KEY` | Yes | Perplexity AI API key for weather queries |
+| 變數 | 必要 | 說明 |
+|------|------|------|
+| `PERPLEXITY_API_KEY` | 是 | Perplexity AI API key，天氣查詢用 |
 
-## Project Structure
+## 專案結構
 
 ```
 src/
-  App.tsx                    # Layout: top bar + sidebar + map + mobile sheet
+  App.tsx                    # 主佈局：top bar + sidebar + map + mobile sheet
   components/
-    CourtSidebar.tsx         # Court list, district filter, detail panel, weather
-    CourtMap.tsx             # Leaflet map with status-colored markers
-    WeatherBadge.tsx         # Weather display (temp, rain probability, emoji)
-  data/courts.ts             # Static court data: coordinates, addresses, VSNs, crowd notes
+    CourtSidebar.tsx         # 球場列表、行政區篩選、詳情面板、天氣
+    CourtMap.tsx             # Leaflet 地圖 + 狀態色標記（藍/綠/紅/灰）
+    WeatherBadge.tsx         # 天氣顯示元件（氣溫、降雨機率、emoji）
+  data/courts.ts             # 47 座球場靜態資料：座標、地址、VSN、佔用提示
   hooks/
-    useAvailability.ts       # VBS polling hook (5 min interval, dedup with ref)
-    useWeather.ts            # Weather polling hook (30 min, silent failure)
-  types/court.ts             # Court, CourtStatus, TimeSlot types
+    useAvailability.ts       # VBS 輪詢 hook（5 分鐘間隔，ref 防重複請求）
+    useWeather.ts            # 天氣輪詢 hook（30 分鐘，失敗靜默降級）
+  types/court.ts             # Court, CourtStatus, TimeSlot 型別定義
 netlify/functions/
-  availability.mts           # VBS session + parallel schedule fetch for 16 VSNs
-  weather.mts                # Perplexity structured weather query for 23 districts
+  availability.mts           # VBS session + 16 個 VSN 並行排程查詢
+  weather.mts                # Perplexity 結構化天氣查詢（23 個行政區）
 ```
 
 ## Roadmap
 
-- [x] 47 courts across Greater Taipei with verified GPS + booking URLs
-- [x] Real-time VBS integration with honest walk-up vs bookable distinction
-- [x] Per-district weather overlay
-- [x] Community-sourced crowd notes (11 courts with known issues)
-- [ ] **User-reported occupancy** — "I'm here, 2 of 4 courts occupied" — the real fix for walk-up courts
-- [ ] **Push notifications** — subscribe to a court, get pinged when slots open
-- [ ] **Expand to other cities** — Taichung, Kaohsiung (requires per-city scraper work)
-- [ ] **Court condition reviews** — surface quality, lighting, drainage ratings
+- [x] 大台北 47 座球場，GPS 座標與預約連結皆已驗證
+- [x] VBS 即時整合，誠實區分「可預約」與「現場排隊」
+- [x] 各行政區天氣疊加
+- [x] 社群佔用提示（11 座球場有已知問題）
+- [ ] **使用者回報佔用狀態** — 「我在現場，4 面場地佔了 2 面」— 現場排隊球場的真正解法
+- [ ] **推播通知** — 訂閱關注場地，空位釋出時即時通知
+- [ ] **擴展到其他縣市** — 台中、高雄（需要逐縣市研究預約系統）
+- [ ] **場地品質評價** — 地面材質、燈光、排水狀況評分
 
 ## License
 
