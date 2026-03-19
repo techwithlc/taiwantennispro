@@ -72,12 +72,13 @@ interface Props {
   courts: Court[]
   selected: Court | null
   onSelect: (court: Court) => void
+  onDeselect: () => void
   filterDistrict: string
   onFilterChange: (d: string) => void
   weather?: Record<string, DistrictWeather>
 }
 
-export default function CourtSidebar({ courts, selected, onSelect, filterDistrict, onFilterChange, weather }: Props) {
+export default function CourtSidebar({ courts, selected, onSelect, onDeselect, filterDistrict, onFilterChange, weather }: Props) {
   const districts = ['全部', ...Array.from(new Set(courts.map((c) => c.district)))]
 
   return (
@@ -202,13 +203,26 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
         }}>
           <div style={{ padding: '14px 16px' }}>
             <div className="flex items-start justify-between mb-1">
-              <p style={{ fontWeight: 800, color: '#1a4731', fontSize: 14 }}>{selected.name}</p>
-              <span style={{
-                fontSize: 11, padding: '2px 10px', borderRadius: 99, fontWeight: 700,
-                background: statusBg(selected), color: statusColor(selected),
-              }}>
-                {statusLabel(selected)}
-              </span>
+              <p style={{ fontWeight: 800, color: '#1a4731', fontSize: 14, flex: 1, minWidth: 0 }}>{selected.name}</p>
+              <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
+                <span style={{
+                  fontSize: 11, padding: '2px 10px', borderRadius: 99, fontWeight: 700,
+                  background: statusBg(selected), color: statusColor(selected),
+                }}>
+                  {statusLabel(selected)}
+                </span>
+                <button
+                  onClick={onDeselect}
+                  style={{
+                    width: 24, height: 24, borderRadius: 12,
+                    border: 'none', background: '#e8efe5',
+                    fontSize: 13, cursor: 'pointer', color: '#6b9080',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                  title="關閉"
+                >✕</button>
+              </div>
             </div>
             <p style={{ fontSize: 11, color: '#6b9080', marginBottom: 10 }}>{selected.address}</p>
 
@@ -257,17 +271,17 @@ export default function CourtSidebar({ courts, selected, onSelect, filterDistric
               </div>
             )}
 
-            {/* No VBS data notice */}
+            {/* No real-time data notice */}
             {!selected.vsn && (
               <div style={{
                 background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 10,
                 padding: '10px 12px', marginBottom: 10, textAlign: 'center',
               }}>
                 <p style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 2 }}>
-                  📡 此場地未接入即時系統
+                  📡 暫無即時資訊
                 </p>
                 <p style={{ fontSize: 10, color: '#94a3b8' }}>
-                  請至官方網站或 App 查詢場地狀態
+                  建議到場勘查，或至官方網站查詢
                 </p>
               </div>
             )}

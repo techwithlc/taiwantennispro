@@ -120,6 +120,7 @@ export default function App() {
             courts={filtered}
             selected={selected}
             onSelect={setSelected}
+            onDeselect={() => setSelected(null)}
             filterDistrict={filterDistrict}
             onFilterChange={setFilterDistrict}
             weather={weather}
@@ -199,8 +200,10 @@ export default function App() {
               courts={filtered}
               selected={selected}
               onSelect={setSelected}
+              onDeselect={() => setSelected(null)}
               filterDistrict={filterDistrict}
               onFilterChange={setFilterDistrict}
+              weather={weather}
             />
           </div>
         </div>
