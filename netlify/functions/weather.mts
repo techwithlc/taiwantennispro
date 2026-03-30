@@ -1,6 +1,6 @@
 import type { Context } from '@netlify/functions'
 
-// CWA Open Data API — 鄉鎮天氣預報 (2天, 6小時解析度)
+// CWA Open Data API — 鄉鎮天氣預報 (2天)
 // 台北市: F-D0047-061, 新北市: F-D0047-069
 const CWA_BASE = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore'
 const DATASETS = ['F-D0047-061', 'F-D0047-069'] as const
@@ -13,51 +13,72 @@ interface DistrictWeather {
   pop: number
 }
 
-/** Pick the forecast period that covers "now" (or the nearest upcoming one) */
-function pickCurrentPeriod(times: CwaTimePeriod[]): CwaTimePeriod | undefined {
-  const now = new Date()
-  // Find the period where now falls between start and end
-  const current = times.find(t => {
-    const start = new Date(t.startTime)
-    const end = new Date(t.endTime)
-    return now >= start && now < end
-  })
-  // Fallback: first future period
-  return current ?? times.find(t => new Date(t.startTime) > now) ?? times[0]
+// ── CWA response types (PascalCase keys) ──
+
+interface CwaElementValue {
+  // Wx → { Weather: "晴", WeatherCode: "01" }
+  // T  → { Temperature: "25" }
+  // PoP6h → { ProbabilityOfPrecipitation: "30" }
+  [key: string]: string
 }
 
 interface CwaTimePeriod {
-  startTime: string
-  endTime: string
-  elementValue: { value: string; measures: string }[]
+  StartTime?: string
+  EndTime?: string
+  DataTime?: string        // T (temperature) uses DataTime instead of Start/End
+  ElementValue: CwaElementValue[]
 }
 
 interface CwaElement {
-  elementName: string
-  time: CwaTimePeriod[]
+  ElementName: string
+  Time: CwaTimePeriod[]
 }
 
 interface CwaLocation {
-  locationName: string
-  weatherElement: CwaElement[]
+  LocationName: string
+  WeatherElement: CwaElement[]
+}
+
+/** Pick the forecast period that covers "now" (or the nearest upcoming one) */
+function pickCurrentPeriod(times: CwaTimePeriod[]): CwaTimePeriod | undefined {
+  const now = new Date()
+
+  const current = times.find(t => {
+    // Period-based (Wx, PoP6h): StartTime / EndTime
+    if (t.StartTime && t.EndTime) {
+      return now >= new Date(t.StartTime) && now < new Date(t.EndTime)
+    }
+    // Point-in-time (T): DataTime — pick the closest one not in the future
+    return false
+  })
+  if (current) return current
+
+  // For DataTime-based elements, pick the closest past or present entry
+  if (times[0]?.DataTime) {
+    const past = times.filter(t => new Date(t.DataTime!) <= now)
+    return past.length > 0 ? past[past.length - 1] : times[0]
+  }
+
+  // Fallback: first future period, or just the first entry
+  return times.find(t => t.StartTime && new Date(t.StartTime) > now) ?? times[0]
 }
 
 function parseLocations(locations: CwaLocation[]): DistrictWeather[] {
   return locations.map((loc) => {
-    const wxEl = loc.weatherElement.find(e => e.elementName === 'Wx')
-    const tEl = loc.weatherElement.find(e => e.elementName === 'T')
-    const popEl = loc.weatherElement.find(e => e.elementName === 'PoP6h')
+    const wxEl = loc.WeatherElement.find(e => e.ElementName === 'Wx')
+    const tEl = loc.WeatherElement.find(e => e.ElementName === 'T')
+    const popEl = loc.WeatherElement.find(e => e.ElementName === 'PoP6h')
 
-    const wxPeriod = wxEl ? pickCurrentPeriod(wxEl.time) : undefined
-    const tPeriod = tEl ? pickCurrentPeriod(tEl.time) : undefined
-    const popPeriod = popEl ? pickCurrentPeriod(popEl.time) : undefined
+    const wxPeriod = wxEl ? pickCurrentPeriod(wxEl.Time) : undefined
+    const tPeriod = tEl ? pickCurrentPeriod(tEl.Time) : undefined
+    const popPeriod = popEl ? pickCurrentPeriod(popEl.Time) : undefined
 
-    return {
-      district: loc.locationName,
-      wx: wxPeriod?.elementValue?.[0]?.value ?? '—',
-      temp: Math.round(Number(tPeriod?.elementValue?.[0]?.value ?? 0)),
-      pop: Math.round(Number(popPeriod?.elementValue?.[0]?.value ?? 0)),
-    }
+    // Extract values from CWA's named-key format
+    const wx = wxPeriod?.ElementValue?.[0]?.Weather ?? '—'
+    const temp = Math.round(Number(tPeriod?.ElementValue?.[0]?.Temperature ?? 0))
+    const pop = Math.round(Number(popPeriod?.ElementValue?.[0]?.ProbabilityOfPrecipitation ?? 0))
+
+    return { district: loc.LocationName, wx, temp, pop }
   })
 }
 
@@ -82,8 +103,9 @@ export default async function handler(_req: Request, _ctx: Context) {
     )
 
     const districts: DistrictWeather[] = results.flatMap((json) => {
+      // CWA uses PascalCase: records.Locations[0].Location[]
       const locations: CwaLocation[] =
-        json?.records?.locations?.[0]?.location ?? []
+        json?.records?.Locations?.[0]?.Location ?? []
       return parseLocations(locations)
     })
 
@@ -92,7 +114,7 @@ export default async function handler(_req: Request, _ctx: Context) {
       {
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=1800', // 30 min — CWA updates every 6h
+          'Cache-Control': 'public, max-age=1800',
           'Access-Control-Allow-Origin': 'https://taiwantennispro.netlify.app',
         },
       }
