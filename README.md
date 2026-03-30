@@ -31,9 +31,9 @@
        │      │
        ▼      ▼
 ┌──────────┐ ┌──────────────┐
-│ VBS API  │ │ Perplexity   │
-│ (台北市   │ │ AI API       │
-│  體育局)  │ │ (天氣查詢)   │
+│ VBS API  │ │ CWA 開放資料  │
+│ (台北市   │ │ API (中央     │
+│  體育局)  │ │  氣象署)     │
 └──────────┘ └──────────────┘
 ```
 
@@ -55,24 +55,26 @@
 
 | | 有即時資料 | 無即時資料 |
 |---|---|---|
-| **可預約** | 🟢 可約有位 / 🟡 部分有位 / 🔴 已約滿 | 灰色：可預約 |
-| **現場排隊** | 🔵 今日開放 / 🟡 部分時段 / 🔴 今日未開放 | 灰色：現場排隊 |
+| **可預約** | 🟢 可約有位 / 🟡 部分有位 / 🔴 已約滿 | 灰色：無即時資料 |
+| **現場排隊** | 🔵 今日開放 / 🟡 部分時段 / 🔴 今日未開放 | 灰色：現場排隊（無即時資料） |
+
+狀態計算只看設施有開放的時段 — 早上還沒開門的時段不會被算成「已預約」，避免狀態虛報為 partial 或 taken。
 
 地圖標記同步對應：綠/紅 = 可預約球場，藍 = 現場排隊球場，灰 = 無即時資料。
 
 ### 天氣整合
 
-天氣是輔助資訊 — 查詢失敗時靜默降級，不影響主功能（`useWeather` 吞掉 error）。透過 Perplexity sonar model 一次取得 23 個行政區的結構化天氣 JSON。快取策略：server 端 30 分鐘，client 端 30 分鐘輪詢。
+天氣是輔助資訊 — 查詢失敗時靜默降級，不影響主功能（`useWeather` 吞掉 error）。透過中央氣象署 (CWA) Open Data API 取得台北市（`F-D0047-061`）與新北市（`F-D0047-069`）的鄉鎮天氣預報，涵蓋全部 23 個行政區。快取策略：server 端 30 分鐘，client 端 30 分鐘輪詢。
 
-**為什麼用 Perplexity 而不是中央氣象署 (CWA)？** CWA 的開放資料 API 需要針對不同資料集代碼操作（台北 `F-D0047-061`、新北 `F-D0047-069`），並解析深層巢狀的 XML/JSON 預報區間。Perplexity 一次 API call 就能拿到全部 23 區的當前天氣，而非 3 小時預報區間。
+每個行政區取三個氣象要素：天氣現象（Wx）、溫度（T）、降雨機率（PoP6h），自動選取涵蓋「現在」的預報時段。
 
-取捨：天氣準確度依賴 LLM。可以接受，因為這裡的天氣只是「要不要帶傘」的參考，不是安全關鍵資料。
+**CWA API 注意事項：** query parameter 接受英文代碼（`elementName=Wx,T,PoP6h`），但回傳的 `ElementName` 是中文（`天氣現象`、`溫度`、`3小時降雨機率`）；且所有 key 都是 PascalCase（`Locations`、`Location`、`WeatherElement`）。
 
 ### 安全性
 
 - **URL 白名單：** 所有預約連結在渲染為 `<a>` 前，都會經過 `APPROVED_DOMAINS` 驗證，不接受任何使用者輸入的 URL
 - **CORS：** API 回應鎖定 production origin
-- **API key 不進 client：** VBS session 和 Perplexity key 都只存在 serverless function 中，前端完全接觸不到
+- **API key 不進 client：** VBS session 和 CWA API key 都只存在 serverless function 中，前端完全接觸不到
 - **AbortSignal timeout：** 所有上游請求設定 8s/15s 硬超時，防止 function hang 住
 
 ## 技術選型
@@ -83,7 +85,7 @@
 | 地圖 | Leaflet + react-leaflet | 輕量、不需 API key（對比 Google Maps），CartoDB Positron 底圖乾淨好看 |
 | 樣式 | Tailwind CSS + inline styles | Tailwind 處理佈局，inline 處理動態狀態顏色（render 時計算） |
 | 後端 | Netlify Functions | 零設定 serverless，與前端同一個 deploy，free tier 足夠應付流量 |
-| 天氣 | Perplexity AI (sonar) | 一次 API call 查 23 區，對比 CWA 需要逐資料集處理 |
+| 天氣 | 中央氣象署 CWA Open Data | 官方預報資料，免費、準確、無 LLM 幻覺風險 |
 | 部署 | Netlify | Git push → 自動部署，Edge CDN，環境變數管理 secrets |
 
 **Runtime 依賴只有 4 個**（react, react-dom, leaflet, react-leaflet）。刻意保持最小化。
@@ -105,7 +107,7 @@
 
 - **VBS 是爬蟲目標，不是穩定 API。** 台北市改 PHP endpoint 或 session 邏輯，爬蟲就會壞。沒有 SLA。
 - **現場排隊球場的「實際佔用」無法遠端得知。** 我們提供設施時段 + 社群佔用提示，但沒辦法告訴你場地上現在有沒有人。真正的解法是 crowdsourcing（使用者回報），已在 roadmap 上。
-- **LLM 天氣有誤差風險。** Perplexity 可能 hallucinate 或回傳過時天氣。我們把它當 best-effort 的輔助資訊處理。
+- **天氣是預報非即時觀測。** CWA 鄉鎮預報每 6 小時更新，顯示的是最近預報時段的數值，不是即時氣象站數據。
 - **運動中心資料是靜態的。** 我們連結到各中心的預約網站，但沒有爬取 — 每個中心用不同廠商系統（CYC、teamXports 等），為 21 個不同系統寫爬蟲的維護成本不值得。
 - **目前只有雙北。** 擴展到其他縣市需要找到各自的預約系統（每個縣市各自為政）。
 
@@ -121,7 +123,7 @@ npm run build       # tsc + vite production build
 
 | 變數 | 必要 | 說明 |
 |------|------|------|
-| `PERPLEXITY_API_KEY` | 是 | Perplexity AI API key，天氣查詢用 |
+| `CWA_API_KEY` | 是 | 中央氣象署開放資料 API key（[免費申請](https://opendata.cwa.gov.tw)），格式 `CWA-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX` |
 
 ## 專案結構
 
@@ -139,7 +141,7 @@ src/
   types/court.ts             # Court, CourtStatus, TimeSlot 型別定義
 netlify/functions/
   availability.mts           # VBS session + 16 個 VSN 並行排程查詢
-  weather.mts                # Perplexity 結構化天氣查詢（23 個行政區）
+  weather.mts                # CWA 開放資料 API 天氣查詢（23 個行政區）
 ```
 
 ## Roadmap
