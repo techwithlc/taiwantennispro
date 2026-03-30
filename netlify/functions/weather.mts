@@ -65,9 +65,10 @@ function pickCurrentPeriod(times: CwaTimePeriod[]): CwaTimePeriod | undefined {
 
 function parseLocations(locations: CwaLocation[]): DistrictWeather[] {
   return locations.map((loc) => {
-    const wxEl = loc.WeatherElement.find(e => e.ElementName === 'Wx')
-    const tEl = loc.WeatherElement.find(e => e.ElementName === 'T')
-    const popEl = loc.WeatherElement.find(e => e.ElementName === 'PoP6h')
+    // CWA returns Chinese ElementName even when queried with English codes
+    const wxEl = loc.WeatherElement.find(e => e.ElementName === '天氣現象')
+    const tEl = loc.WeatherElement.find(e => e.ElementName === '溫度')
+    const popEl = loc.WeatherElement.find(e => e.ElementName === '3小時降雨機率')
 
     const wxPeriod = wxEl ? pickCurrentPeriod(wxEl.Time) : undefined
     const tPeriod = tEl ? pickCurrentPeriod(tEl.Time) : undefined
