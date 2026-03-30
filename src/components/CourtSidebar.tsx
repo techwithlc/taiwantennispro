@@ -67,7 +67,7 @@ function MiniTennisBall({ color, size = 10 }: { color: string; size?: number }) 
 
 function statusLabel(court: Court): string {
   const hasData = court.vsn && court.status !== 'unknown'
-  if (!hasData) return court.walkUpOnly ? '現場排隊' : '可預約'
+  if (!hasData) return court.vsn ? '載入中…' : (court.walkUpOnly ? '現場排隊（無即時資料）' : '無即時資料')
   if (court.walkUpOnly) {
     // VBS data = facility open hours (not booking availability)
     if (court.status === 'available') return '今日開放'
@@ -326,10 +326,10 @@ export default function CourtSidebar({ courts, selected, onSelect, onDeselect, f
                 padding: '10px 12px', marginBottom: 10, textAlign: 'center',
               }}>
                 <p style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 2 }}>
-                  📡 暫無即時資訊
+                  📡 此球場未接入即時系統
                 </p>
                 <p style={{ fontSize: 10, color: '#94a3b8' }}>
-                  建議到場勘查，或至官方網站查詢
+                  無法顯示場地使用狀態，建議至官方網站或電話確認
                 </p>
               </div>
             )}

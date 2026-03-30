@@ -1,14 +1,10 @@
 import type { Context } from '@netlify/functions'
 
-// Districts we need weather for (matching court data)
-const DISTRICTS = [
-  // 台北市
-  '中山區', '內湖區', '萬華區', '文山區', '中正區', '松山區',
-  '大同區', '士林區', '大安區', '南港區', '信義區', '北投區',
-  // 新北市
-  '板橋區', '新莊區', '三重區', '中和區', '永和區', '新店區',
-  '汐止區', '土城區', '蘆洲區', '林口區', '淡水區',
-]
+// CWA Open Data API — 鄉鎮天氣預報 (2天, 6小時解析度)
+// 台北市: F-D0047-061, 新北市: F-D0047-069
+const CWA_BASE = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore'
+const DATASETS = ['F-D0047-061', 'F-D0047-069'] as const
+const ELEMENTS = 'Wx,T,PoP6h'
 
 interface DistrictWeather {
   district: string
@@ -17,79 +13,86 @@ interface DistrictWeather {
   pop: number
 }
 
+/** Pick the forecast period that covers "now" (or the nearest upcoming one) */
+function pickCurrentPeriod(times: CwaTimePeriod[]): CwaTimePeriod | undefined {
+  const now = new Date()
+  // Find the period where now falls between start and end
+  const current = times.find(t => {
+    const start = new Date(t.startTime)
+    const end = new Date(t.endTime)
+    return now >= start && now < end
+  })
+  // Fallback: first future period
+  return current ?? times.find(t => new Date(t.startTime) > now) ?? times[0]
+}
+
+interface CwaTimePeriod {
+  startTime: string
+  endTime: string
+  elementValue: { value: string; measures: string }[]
+}
+
+interface CwaElement {
+  elementName: string
+  time: CwaTimePeriod[]
+}
+
+interface CwaLocation {
+  locationName: string
+  weatherElement: CwaElement[]
+}
+
+function parseLocations(locations: CwaLocation[]): DistrictWeather[] {
+  return locations.map((loc) => {
+    const wxEl = loc.weatherElement.find(e => e.elementName === 'Wx')
+    const tEl = loc.weatherElement.find(e => e.elementName === 'T')
+    const popEl = loc.weatherElement.find(e => e.elementName === 'PoP6h')
+
+    const wxPeriod = wxEl ? pickCurrentPeriod(wxEl.time) : undefined
+    const tPeriod = tEl ? pickCurrentPeriod(tEl.time) : undefined
+    const popPeriod = popEl ? pickCurrentPeriod(popEl.time) : undefined
+
+    return {
+      district: loc.locationName,
+      wx: wxPeriod?.elementValue?.[0]?.value ?? '—',
+      temp: Math.round(Number(tPeriod?.elementValue?.[0]?.value ?? 0)),
+      pop: Math.round(Number(popPeriod?.elementValue?.[0]?.value ?? 0)),
+    }
+  })
+}
+
 export default async function handler(_req: Request, _ctx: Context) {
-  const apiKey = Netlify.env.get('PERPLEXITY_API_KEY')
+  const apiKey = Netlify.env.get('CWA_API_KEY')
   if (!apiKey) {
     return new Response(
-      JSON.stringify({ ok: false, error: 'API key not configured' }),
+      JSON.stringify({ ok: false, error: 'CWA API key not configured' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
   try {
-    const now = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
-    const districtList = DISTRICTS.join('、')
+    // Fetch both Taipei & New Taipei in parallel
+    const results = await Promise.all(
+      DATASETS.map(async (dataset) => {
+        const url = `${CWA_BASE}/${dataset}?Authorization=${apiKey}&elementName=${ELEMENTS}&format=JSON`
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+        if (!res.ok) throw new Error(`CWA API ${dataset} returned ${res.status}`)
+        return res.json()
+      })
+    )
 
-    const res = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      signal: AbortSignal.timeout(15000),
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a weather data API. Return ONLY valid JSON, no markdown, no explanation.',
-          },
-          {
-            role: 'user',
-            content: `現在是 ${now}。請查詢台北市和新北市以下行政區的目前天氣：${districtList}。
-
-回傳嚴格 JSON 格式如下，不要加任何其他文字：
-[{"district":"中山區","wx":"晴","temp":28,"pop":10},...]
-
-wx = 天氣描述（晴/多雲/陰/雨 等）
-temp = 目前氣溫（整數°C）
-pop = 降雨機率（整數 0-100）
-
-只回傳 JSON array，不要 markdown code block。`,
-          },
-        ],
-        temperature: 0.1,
-        max_tokens: 2000,
-      }),
+    const districts: DistrictWeather[] = results.flatMap((json) => {
+      const locations: CwaLocation[] =
+        json?.records?.locations?.[0]?.location ?? []
+      return parseLocations(locations)
     })
-
-    if (!res.ok) throw new Error(`Perplexity API ${res.status}`)
-    const json = await res.json()
-
-    const content: string = json.choices?.[0]?.message?.content ?? ''
-
-    // Extract JSON array from response (handle markdown code blocks if any)
-    const jsonMatch = content.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) throw new Error('No JSON array in response')
-
-    const parsed: DistrictWeather[] = JSON.parse(jsonMatch[0])
-
-    // Validate and clean
-    const districts: DistrictWeather[] = parsed
-      .filter(d => d.district && typeof d.temp === 'number')
-      .map(d => ({
-        district: d.district,
-        wx: d.wx || '—',
-        temp: Math.round(d.temp),
-        pop: Math.round(d.pop ?? 0),
-      }))
 
     return new Response(
       JSON.stringify({ ok: true, districts }),
       {
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=1800', // 30 min
+          'Cache-Control': 'public, max-age=1800', // 30 min — CWA updates every 6h
           'Access-Control-Allow-Origin': 'https://taiwantennispro.netlify.app',
         },
       }

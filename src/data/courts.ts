@@ -730,7 +730,7 @@ export const STATUS_LABEL: Record<string, string> = {
   available: '有空位',
   taken: '已約滿',
   partial: '部分開放',
-  unknown: '查詢中',
+  unknown: '無即時資料',
 }
 
 export const SOURCE_LABEL: Record<string, string> = {

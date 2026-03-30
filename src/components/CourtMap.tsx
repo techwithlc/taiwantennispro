@@ -71,7 +71,7 @@ function makeIcon(court: Court, selected: boolean): L.DivIcon {
 
 function popupStatusLabel(court: Court): string {
   const hasData = court.vsn && court.status !== 'unknown'
-  if (!hasData) return court.walkUpOnly ? '現場排隊' : '可預約'
+  if (!hasData) return court.vsn ? '載入中…' : (court.walkUpOnly ? '現場排隊' : '無即時資料')
   if (court.walkUpOnly) {
     if (court.status === 'available') return '今日開放'
     if (court.status === 'partial') return '部分時段'

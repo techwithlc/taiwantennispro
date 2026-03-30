@@ -93,15 +93,18 @@ export default async function handler(_req: Request, _ctx: Context) {
         const slots = PLAY_HOURS.map((time) => {
           const key = time.replace(':', '')  // "0800"
           const slot = daySlots[key]
-          if (!slot) return { time, available: false }
-          // D=1 → booked, D=0 + IR=1 → available, IR=0 → closed
-          const available = slot.D === '0' && slot.IR !== '0'
-          return { time, available }
+          if (!slot) return { time, available: false, closed: true }
+          const booked = slot.D === '1'
+          const facilityOpen = slot.IR !== '0'
+          const closed = !facilityOpen && !booked
+          return { time, available: !booked && facilityOpen, closed }
         })
 
-        const bookedCount = slots.filter((s) => !s.available).length
-        const availCount  = slots.filter((s) => s.available).length
-        const total = bookedCount + availCount
+        // Only count slots where the facility is actually open
+        const openSlots = slots.filter((s) => !s.closed)
+        const bookedCount = openSlots.filter((s) => !s.available).length
+        const availCount  = openSlots.filter((s) => s.available).length
+        const total = openSlots.length
 
         const status =
           total === 0        ? 'unknown' :
@@ -109,7 +112,7 @@ export default async function handler(_req: Request, _ctx: Context) {
           availCount === 0   ? 'taken' :
                                'partial'
 
-        results[vsn] = { status, bookedCount, availCount, slots }
+        results[vsn] = { status, bookedCount, availCount, slots: slots.map(({ time, available }) => ({ time, available })) }
       })
     )
 
